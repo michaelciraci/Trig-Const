@@ -1,0 +1,15 @@
+[package]
+name = "trig-const"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85.0"
+categories = ["mathematics", "trig", "no-std"]
+authors = ["Michael Ciraci <michaelciraci@hotmail.com>"]
+description = "Const trig functions in Rust"
+documentation = "docs.rs/trig-const"
+repository = "https://github.com/michaelciraci/trig-const"
+homepage = "https://github.com/michaelciraci/trig-const"
+keywords = ["const", "trig", "no_std"]
+license = "MIT"
+
+[dependencies]
