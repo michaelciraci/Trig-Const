@@ -44,6 +44,13 @@ use core::f64::consts::PI;
 /// float_eq(COS_PI, -1.0);
 /// ```
 pub const fn cos(mut x: f64) -> f64 {
+    // If value is large, fold into smaller value
+    while x < -0.1 {
+        x += 2.0 * PI;
+    }
+    while x > 2.0 * PI + 0.1 {
+        x -= 2.0 * PI;
+    }
     let div = (x / PI) as u32;
     x = x - (div as f64 * PI);
     let sign = if div % 2 != 0 { -1.0 } else { 1.0 };
