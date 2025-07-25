@@ -16,7 +16,7 @@ This crate supports any compiler version back to rustc 1.85.1
 
 ```ignore
 [dependencies]
-trig-const = "1.0"
+trig-const = "0"
 ```
 
 ## Example

@@ -18,7 +18,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! trig-const = "1.0"
+//! trig-const = "0"
 //! ```
 //!
 //! ## Example
