@@ -32,6 +32,8 @@
 //! ```
 
 #![no_std]
+#![forbid(unsafe_code)]
+
 use core::f64::consts::PI;
 
 /// Cosine
@@ -52,7 +54,7 @@ pub const fn cos(mut x: f64) -> f64 {
         x -= 2.0 * PI;
     }
     let div = (x / PI) as u32;
-    x = x - (div as f64 * PI);
+    x -= div as f64 * PI;
     let sign = if div % 2 != 0 { -1.0 } else { 1.0 };
 
     let mut result = 1.0;

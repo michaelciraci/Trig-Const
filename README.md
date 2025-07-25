@@ -10,6 +10,11 @@ The implemntation was largely inspired by the work of Dr. Austin Henley and Dr. 
 
 The implementation carries forward the original MIT license contained in the GitHub repo above.
 
+## Project Goals
+ - Correctness while const (same result as std within a rounding error)
+ - no-std
+ - No unsafe
+
 ## Requirements
 
 This crate supports any compiler version back to rustc 1.85.1
@@ -21,7 +26,7 @@ trig-const = "0"
 
 ## Example
 
-```
+```rust
 const COS_PI: f64 = cos(PI);
 assert_eq!(COS_PI, -1.0);
 ```
