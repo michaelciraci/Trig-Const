@@ -122,7 +122,7 @@ pub const fn cot(x: f64) -> f64 {
 /// # use trig_const::sec;
 /// # use core::f64::consts::PI;
 /// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
-/// let SEC_PI: f64 = sec(PI);
+/// const SEC_PI: f64 = sec(PI);
 /// float_eq(SEC_PI, -1.0);
 /// ```
 pub const fn sec(x: f64) -> f64 {
@@ -142,16 +142,101 @@ pub const fn csc(x: f64) -> f64 {
     1.0 / sin(x)
 }
 
+/// Hyperbolic Sine
+///
+/// ```
+/// # use trig_const::sinh;
+/// const SINH_0: f64 = sinh(0.0);
+/// assert_eq!(SINH_0, 0.0);
+/// ```
+pub const fn sinh(x: f64) -> f64 {
+    (exp(x) - exp(-x)) / 2.0
+}
+
+/// Hyperbolic Cosine
+///
+/// ```
+/// # use trig_const::cosh;
+/// const COSH_0: f64 = cosh(0.0);
+/// assert_eq!(COSH_0, 1.0);
+/// ```
+pub const fn cosh(x: f64) -> f64 {
+    (exp(x) + exp(-x)) / 2.0
+}
+
+/// e^x
+const fn exp(x: f64) -> f64 {
+    let mut i = 1;
+    let mut s = 1.0;
+
+    while i < 16 {
+        s += expi(x, i) / factorial(i as f64);
+        i += 1;
+    }
+
+    s
+}
+
+/// x^pow
+const fn expi(x: f64, mut pow: usize) -> f64 {
+    let mut o = 1.0;
+
+    while pow > 0 {
+        o *= x;
+        pow -= 1;
+    }
+
+    o
+}
+
+/// Factorial (x!)
+const fn factorial(mut x: f64) -> f64 {
+    if x == 0.0 {
+        0.0
+    } else {
+        let mut s = 1.0;
+        while x > 1.0 {
+            s *= x;
+            x -= 1.0;
+        }
+        s
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use core::f64::consts::PI;
+    use core::f64::consts::{E, PI};
 
-    use crate::{cos, sin};
+    use crate::{cos, cosh, exp, expi, factorial, sin, sinh};
 
     macro_rules! float_eq {
         ($lhs:expr, $rhs:expr) => {
             assert!(($lhs - $rhs).abs() < 0.0001, "lhs: {}, rhs: {}", $lhs, $rhs);
         };
+    }
+
+    #[test]
+    fn test_factorial() {
+        assert_eq!(factorial(0.0), 0.0);
+        assert_eq!(factorial(1.0), 1.0);
+        assert_eq!(factorial(2.0), 2.0);
+        assert_eq!(factorial(3.0), 6.0);
+        assert_eq!(factorial(4.0), 24.0);
+        assert_eq!(factorial(5.0), 120.0);
+    }
+
+    #[test]
+    fn test_expi() {
+        assert_eq!(expi(2.0, 0), 1.0);
+        assert_eq!(expi(2.0, 4), 16.0);
+        assert_eq!(expi(2.0, 5), 32.0);
+        assert_eq!(expi(3.0, 3), 27.0);
+    }
+
+    #[test]
+    fn test_exp() {
+        float_eq!(exp(0.0), 1.0);
+        float_eq!(exp(1.0), E);
     }
 
     #[test]
@@ -168,5 +253,19 @@ mod tests {
         float_eq!(sin(1.0), 1.0_f64.sin());
         float_eq!(sin(PI), PI.sin());
         float_eq!(sin(PI * 8.0), (PI * 8.0).sin());
+    }
+
+    #[test]
+    fn test_sinh() {
+        for x in [0.0, 0.5, 1.0, 1.5, 2.0, 2.5] {
+            float_eq!(sinh(x), x.sinh());
+        }
+    }
+
+    #[test]
+    fn test_cosh() {
+        for x in [0.0, 0.5, 1.0, 1.5, 2.0, 2.5] {
+            float_eq!(cosh(x), x.cosh());
+        }
     }
 }
