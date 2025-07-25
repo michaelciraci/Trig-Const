@@ -22,8 +22,6 @@ trig-const = "0"
 ## Example
 
 ```
-# use trig_const::cos;
-# use std::f64::const::PI;
 const COS_PI: f64 = cos(PI);
 assert_eq!(COS_PI, -1.0);
 ```
