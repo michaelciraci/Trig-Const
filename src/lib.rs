@@ -39,7 +39,7 @@ use core::f64::{self, consts::PI};
 /// Number of sum iterations for Taylor series
 const TAYLOR_SERIES_SUMS: usize = 16;
 /// Number of sum iterations for ln
-const LN_SUM_TERMS: f64 = 101.0;
+const LN_SUM_TERMS: f64 = 1001.0;
 
 /// Cosine
 ///
