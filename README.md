@@ -17,7 +17,7 @@ The implementation carries forward the original MIT license contained in the Git
 
 ## Requirements
 
-This crate supports any compiler version back to rustc 1.85.1
+This crate supports any compiler version back to rustc 1.85.0
 
 ```ignore
 [dependencies]
