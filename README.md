@@ -33,7 +33,9 @@ assert_eq!(COS_PI, -1.0);
 
 ## Functions
 - acos
+- acosh
 - asin
+- asinh
 - cos
 - cosh
 - cot

@@ -35,7 +35,11 @@
 #![forbid(unsafe_code)]
 
 use core::f64::{self, consts::PI};
+
+/// Number of sum iterations for Taylor series
 const TAYLOR_SERIES_SUMS: usize = 16;
+/// Number of sum iterations for ln
+const LN_SUM_TERMS: f64 = 101.0;
 
 /// Cosine
 ///
@@ -188,16 +192,11 @@ pub const fn cosh(x: f64) -> f64 {
 /// assert_eq!(ASIN_PI, 0.0);
 /// ```
 pub const fn asin(x: f64) -> f64 {
-    if x.is_infinite() {
+    if x.is_infinite() || x.abs() > 1.0 {
         return f64::NAN;
-    }
-    if x.abs() > 1.0 {
-        return f64::NAN;
-    }
-    if x == 1.0 {
+    } else if x == 1.0 {
         return f64::consts::FRAC_PI_2;
-    }
-    if x == -1.0 {
+    } else if x == -1.0 {
         return -f64::consts::FRAC_PI_2;
     }
 
@@ -246,14 +245,47 @@ pub const fn asin(x: f64) -> f64 {
 /// assert_eq!(ACOS_1, 0.0);
 /// ```
 pub const fn acos(x: f64) -> f64 {
-    if x.is_infinite() {
-        return f64::NAN;
+    if x.is_infinite() || x.abs() > 1.0 {
+        f64::NAN
+    } else {
+        f64::consts::FRAC_PI_2 - asin(x)
     }
-    if x.abs() > 1.0 {
-        return f64::NAN;
-    }
+}
 
-    f64::consts::FRAC_PI_2 - asin(x)
+/// Inverse hyperbolic sine
+///
+/// ```
+/// # use trig_const::asinh;
+/// const ASINH_1: f64 = asinh(0.0);
+/// assert_eq!(ASINH_1, 0.0);
+/// ```
+pub const fn asinh(x: f64) -> f64 {
+    if x.is_nan() {
+        f64::NAN
+    } else if x.is_infinite() {
+        x
+    } else {
+        ln(x + sqrt(x * x + 1.0))
+    }
+}
+
+/// Inverse hyperbolic cosine
+///
+/// ```
+/// # use trig_const::acosh;
+/// const ACOSH_1: f64 = acosh(1.0);
+/// assert_eq!(ACOSH_1, 0.0);
+/// ```
+pub const fn acosh(x: f64) -> f64 {
+    if x.is_nan() {
+        f64::NAN
+    } else if x.is_infinite() {
+        x
+    } else if x < 1.0 {
+        f64::NAN
+    } else {
+        ln(x + sqrt(x * x - 1.0))
+    }
 }
 
 /// e^x
@@ -299,11 +331,7 @@ const fn factorial(mut x: f64) -> f64 {
 const fn sqrt(x: f64) -> f64 {
     if x.is_nan() || x < 0.0 {
         return f64::NAN;
-    }
-    if x.is_infinite() {
-        return x;
-    }
-    if x == 0.0 {
+    } else if x.is_infinite() || x == 0.0 {
         return x;
     }
 
@@ -319,11 +347,53 @@ const fn sqrt(x: f64) -> f64 {
     current_guess
 }
 
+/// Computes natural log using Taylor series approximation
+const fn ln(x: f64) -> f64 {
+    if x.is_nan() || x < 0.0 {
+        return f64::NAN;
+    } else if x == 0.0 {
+        return f64::NEG_INFINITY;
+    } else if x == 1.0 {
+        return 0.0;
+    } else if x.is_infinite() {
+        return f64::INFINITY;
+    }
+
+    // Put into form ln(x) = ln(a * 2^k) = ln(a) + k * ln(2)
+
+    let mut a = x;
+    let mut k = 0;
+
+    // Normalize `a` to [1.0, 2.0)
+    while a >= 2.0 {
+        a /= 2.0;
+        k += 1;
+    }
+    while a < 1.0 {
+        a *= 2.0;
+        k -= 1;
+    }
+
+    let x = a - 1.0;
+
+    let mut s = 0.0;
+    let mut term = x;
+    let mut n = 1.0;
+
+    while n < LN_SUM_TERMS {
+        s += term;
+        n += 1.0;
+        term = -term * x * (n - 1.0) / n;
+    }
+
+    s + (k as f64) * f64::consts::LN_2
+}
+
 #[cfg(test)]
 mod tests {
     use core::f64::consts::{E, PI};
 
-    use crate::{cos, cosh, exp, expi, factorial, sin, sinh, sqrt};
+    use crate::{cos, cosh, exp, expi, factorial, ln, sin, sinh, sqrt};
 
     macro_rules! float_eq {
         ($lhs:expr, $rhs:expr) => {
@@ -357,6 +427,8 @@ mod tests {
 
     #[test]
     fn test_sqrt() {
+        float_eq!(sqrt(0.0), 0.0);
+        float_eq!(sqrt(1.0), 1.0);
         float_eq!(sqrt(4.0), 2.0);
         float_eq!(sqrt(9.0), 3.0);
         float_eq!(sqrt(16.0), 4.0);
@@ -391,5 +463,15 @@ mod tests {
         for x in [0.0, 0.5, 1.0, 1.5, 2.0, 2.5] {
             float_eq!(cosh(x), x.cosh());
         }
+    }
+
+    #[test]
+    fn test_ln() {
+        float_eq!(ln(0.01), 0.01_f64.ln());
+        float_eq!(ln(0.5), 0.5_f64.ln());
+        float_eq!(ln(1.0), 1.0_f64.ln());
+        float_eq!(ln(2.0), 2.0_f64.ln());
+        float_eq!(ln(10.0), 10.0_f64.ln());
+        float_eq!(ln(1_000.0), 1_000.0_f64.ln());
     }
 }
