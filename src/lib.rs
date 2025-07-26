@@ -34,7 +34,8 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
-use core::f64::consts::PI;
+use core::f64::{self, consts::PI};
+const TAYLOR_SERIES_SUMS: usize = 16;
 
 /// Cosine
 ///
@@ -62,7 +63,7 @@ pub const fn cos(mut x: f64) -> f64 {
     let num = x * x;
 
     let mut i = 1;
-    while i <= 16 {
+    while i <= TAYLOR_SERIES_SUMS {
         let comp = 2.0 * i as f64;
         let den = comp * (comp - 1.0);
         inter *= num / den;
@@ -113,7 +114,12 @@ pub const fn tan(x: f64) -> f64 {
 /// float_eq(COT_PI_4, 1.0);
 /// ```
 pub const fn cot(x: f64) -> f64 {
-    cos(x) / sin(x)
+    let sin_calc = sin(x);
+    if sin_calc == 0.0 {
+        f64::INFINITY
+    } else {
+        cos(x) / sin_calc
+    }
 }
 
 /// Secant
@@ -126,7 +132,12 @@ pub const fn cot(x: f64) -> f64 {
 /// float_eq(SEC_PI, -1.0);
 /// ```
 pub const fn sec(x: f64) -> f64 {
-    1.0 / cos(x)
+    let cos_calc = cos(x);
+    if cos_calc == 0.0 {
+        f64::INFINITY
+    } else {
+        1.0 / cos_calc
+    }
 }
 
 /// Cosecant
@@ -139,7 +150,12 @@ pub const fn sec(x: f64) -> f64 {
 /// float_eq(CSC_PI_2, 1.0);
 /// ```
 pub const fn csc(x: f64) -> f64 {
-    1.0 / sin(x)
+    let sin_calc = sin(x);
+    if sin_calc == 0.0 {
+        f64::INFINITY
+    } else {
+        1.0 / sin_calc
+    }
 }
 
 /// Hyperbolic Sine
@@ -162,6 +178,82 @@ pub const fn sinh(x: f64) -> f64 {
 /// ```
 pub const fn cosh(x: f64) -> f64 {
     (exp(x) + exp(-x)) / 2.0
+}
+
+/// Arcsine
+///
+/// ```
+/// # use trig_const::asin;
+/// const ASIN_PI: f64 = asin(0.0);
+/// assert_eq!(ASIN_PI, 0.0);
+/// ```
+pub const fn asin(x: f64) -> f64 {
+    if x.is_infinite() {
+        return f64::NAN;
+    }
+    if x.abs() > 1.0 {
+        return f64::NAN;
+    }
+    if x == 1.0 {
+        return f64::consts::FRAC_PI_2;
+    }
+    if x == -1.0 {
+        return -f64::consts::FRAC_PI_2;
+    }
+
+    // As we start to get past 0.8, the number of summations needed for an accurate
+    // Taylor series approximation starts to get unweidy. We can use the property
+    // that arcsin(x) = pi/2 - 2*arcsin(sqrt((1 - x) / 2)) to reduce
+    const RANGE_REDUCTION_THRESHOLD: f64 = 0.5;
+    if x.abs() > RANGE_REDUCTION_THRESHOLD {
+        let sign = x.signum();
+        let abs_x = x.abs();
+
+        let y = sqrt((1.0 - abs_x) / 2.0);
+        return sign * (f64::consts::FRAC_PI_2 - 2.0 * asin(y));
+    }
+
+    let mut n = 1;
+    let mut s = x;
+
+    while n < TAYLOR_SERIES_SUMS {
+        let numer1 = factorial(2.0 * n as f64);
+        let numer2 = expi(x, 2 * n + 1);
+
+        // Calculate all denom terms;
+        let denom1 = expi(4.0, n);
+        let denom2 = factorial(n as f64) * factorial(n as f64);
+        let denom3 = 2.0 * n as f64 + 1.0;
+
+        // Try to match terms to divide to stop number getting too large
+        let f1 = numer1 / denom2;
+        let f2 = numer2 / denom1;
+
+        s += f1 * f2 / denom3;
+
+        n += 1;
+    }
+
+    s
+}
+
+/// Arccosine
+///
+/// ```
+/// # use trig_const::acos;
+/// # use core::f64::consts::PI;
+/// const ACOS_1: f64 = acos(1.0);
+/// assert_eq!(ACOS_1, 0.0);
+/// ```
+pub const fn acos(x: f64) -> f64 {
+    if x.is_infinite() {
+        return f64::NAN;
+    }
+    if x.abs() > 1.0 {
+        return f64::NAN;
+    }
+
+    f64::consts::FRAC_PI_2 - asin(x)
 }
 
 /// e^x
@@ -191,8 +283,8 @@ const fn expi(x: f64, mut pow: usize) -> f64 {
 
 /// Factorial (x!)
 const fn factorial(mut x: f64) -> f64 {
-    if x == 0.0 {
-        0.0
+    if x == 0.0 || x == 1.0 {
+        1.0
     } else {
         let mut s = 1.0;
         while x > 1.0 {
@@ -203,11 +295,35 @@ const fn factorial(mut x: f64) -> f64 {
     }
 }
 
+/// Const sqrt function using Newton's method
+const fn sqrt(x: f64) -> f64 {
+    if x.is_nan() || x < 0.0 {
+        return f64::NAN;
+    }
+    if x.is_infinite() {
+        return x;
+    }
+    if x == 0.0 {
+        return x;
+    }
+
+    // Use Newton's method for sqrt calculation
+    let mut current_guess = 1.0;
+
+    let mut i = 0;
+    while i < TAYLOR_SERIES_SUMS {
+        current_guess = 0.5 * (current_guess + x / current_guess);
+        i += 1;
+    }
+
+    current_guess
+}
+
 #[cfg(test)]
 mod tests {
     use core::f64::consts::{E, PI};
 
-    use crate::{cos, cosh, exp, expi, factorial, sin, sinh};
+    use crate::{cos, cosh, exp, expi, factorial, sin, sinh, sqrt};
 
     macro_rules! float_eq {
         ($lhs:expr, $rhs:expr) => {
@@ -217,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_factorial() {
-        assert_eq!(factorial(0.0), 0.0);
+        assert_eq!(factorial(0.0), 1.0);
         assert_eq!(factorial(1.0), 1.0);
         assert_eq!(factorial(2.0), 2.0);
         assert_eq!(factorial(3.0), 6.0);
@@ -237,6 +353,14 @@ mod tests {
     fn test_exp() {
         float_eq!(exp(0.0), 1.0);
         float_eq!(exp(1.0), E);
+    }
+
+    #[test]
+    fn test_sqrt() {
+        float_eq!(sqrt(4.0), 2.0);
+        float_eq!(sqrt(9.0), 3.0);
+        float_eq!(sqrt(16.0), 4.0);
+        float_eq!(sqrt(25.0), 5.0);
     }
 
     #[test]
