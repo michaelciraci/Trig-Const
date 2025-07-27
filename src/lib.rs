@@ -21,7 +21,7 @@
 //! trig-const = "0"
 //! ```
 //!
-//! ## Example
+//! ## Examples
 //!
 //! ```
 //! # use trig_const::cos;
@@ -30,16 +30,35 @@
 //! const COS_PI: f64 = cos(PI);
 //! float_eq(COS_PI, -1.0);
 //! ```
+//!
+//! ```
+//! use std::f64::consts::PI;
+//! use trig_const::{atan2, sin};
+//!
+//! const SIN_PI_4: f64 = sin(PI / 2.0);
+//! const ATAN2_0_0: f64 = atan2(0.0, 0.0);
+//!
+//! fn main() {
+//!     println!("{SIN_PI_4}\n{ATAN2_0_0}");
+//! }
+//! ```
+//!
 
 #![no_std]
 #![forbid(unsafe_code)]
 
-use core::f64::{self, consts::PI};
+use core::f64::{
+    self,
+    consts::{FRAC_PI_2, PI},
+};
 
 /// Number of sum iterations for Taylor series
 const TAYLOR_SERIES_SUMS: usize = 16;
 /// Number of sum iterations for ln
 const LN_SUM_TERMS: f64 = 1001.0;
+/// Number of sum iterations for atan. This series
+/// takes a while to converge
+const ATAN_SUMS: usize = 100_000;
 
 /// Cosine
 ///
@@ -249,6 +268,91 @@ pub const fn acos(x: f64) -> f64 {
         f64::NAN
     } else {
         f64::consts::FRAC_PI_2 - asin(x)
+    }
+}
+
+/// Arctangent
+///
+/// ```
+/// # use trig_const::atan;
+/// # use core::f64::consts::PI;
+/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
+/// const ATAN_1: f64 = atan(1.0);
+/// float_eq(ATAN_1, PI / 4.0);
+/// ```
+pub const fn atan(x: f64) -> f64 {
+    if x.is_nan() {
+        return f64::NAN;
+    } else if x.is_infinite() {
+        if x > 0.0 {
+            return FRAC_PI_2;
+        } else {
+            return -FRAC_PI_2;
+        }
+    } else if x == 0.0 {
+        return 0.0;
+    }
+
+    const fn atan_taylor_series(x: f64) -> f64 {
+        let mut s = 0.0;
+        let mut term = x;
+        let mut sign = 1.0;
+        let x_squared = x * x;
+
+        let mut n = 0;
+        // This series takes a bit longer to converge
+        while n < ATAN_SUMS {
+            let denom = (2 * n + 1) as f64;
+            s += sign * term / denom;
+            term *= x_squared;
+            if sign == 1.0 {
+                sign = -1.0;
+            } else {
+                sign = 1.0;
+            }
+            n += 1;
+        }
+
+        s
+    }
+
+    if x > 1.0 {
+        FRAC_PI_2 - atan_taylor_series(1.0 / x)
+    } else if x < -1.0 {
+        -FRAC_PI_2 - atan_taylor_series(1.0 / x)
+    } else {
+        atan_taylor_series(x)
+    }
+}
+
+/// Arctan2
+///
+/// ```
+/// # use trig_const::atan2;
+/// # use core::f64::consts::PI;
+/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
+/// const ATAN2_0_1: f64 = atan2(0.0, 1.0);
+/// float_eq(ATAN2_0_1, 0.0);
+/// ```
+pub const fn atan2(y: f64, x: f64) -> f64 {
+    if x.is_nan() || y.is_nan() {
+        return f64::NAN;
+    }
+
+    if x == 0.0 {
+        if y > 0.0 {
+            FRAC_PI_2
+        } else if y < 0.0 {
+            -FRAC_PI_2
+        } else {
+            0.0
+        }
+    } else if x > 0.0 {
+        atan(y / x) // Quadrant I or IV
+    } else if y >= 0.0 {
+        atan(y / x) + PI // Quadrant II
+    } else {
+        atan(y / x) - PI // Quadrant III
     }
 }
 

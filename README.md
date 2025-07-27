@@ -2,7 +2,7 @@
 
 Rust implementation of const trig functions.
 
-This is implemented using a 16-term Taylor series approximation of trig functions. Correctness is favored over speed, especially considering the main use case for this crate is to expose trigonometric functions for compile time.
+This is implemens trig functions using Taylor series approximations. Correctness is prioritized over speed, especially considering the main use case for this crate is to expose trigonometric functions for compile-time evaluation.
 
 The implemntation was largely inspired by the work of Dr. Austin Henley and Dr. Stephen Marz:
   - GitHub Repo: https://github.com/AZHenley/cosine
@@ -31,11 +31,25 @@ const COS_PI: f64 = cos(PI);
 assert_eq!(COS_PI, -1.0);
 ```
 
+```rust
+use std::f64::consts::PI;
+use trig_const::{atan2, sin};
+
+const SIN_PI_4: f64 = sin(PI / 2.0);
+const ATAN2_0_0: f64 = atan2(0.0, 0.0);
+
+fn main() {
+    println!("{}\n{}", SIN_PI_4, ATAN2_0_0);
+}
+```
+
 ## Functions
 - acos
 - acosh
 - asin
 - asinh
+- atan
+- atan2
 - cos
 - cosh
 - cot
