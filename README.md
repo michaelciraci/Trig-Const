@@ -2,7 +2,7 @@
 
 Rust implementation of const trig functions.
 
-This is implemens trig functions using Taylor series approximations. Correctness is prioritized over speed, especially considering the main use case for this crate is to expose trigonometric functions for compile-time evaluation.
+This is implemented using Taylor series approximations. Correctness is prioritized over speed, especially considering the main use case for this crate is to expose trigonometric functions for compile-time evaluation.
 
 The implemntation was largely inspired by the work of Dr. Austin Henley and Dr. Stephen Marz:
   - GitHub Repo: https://github.com/AZHenley/cosine
