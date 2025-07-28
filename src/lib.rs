@@ -452,7 +452,7 @@ const fn sqrt(x: f64) -> f64 {
 }
 
 /// Computes natural log using Taylor series approximation
-const fn ln(x: f64) -> f64 {
+pub const fn ln(x: f64) -> f64 {
     if x.is_nan() || x < 0.0 {
         return f64::NAN;
     } else if x == 0.0 {
