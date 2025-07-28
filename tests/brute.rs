@@ -1,6 +1,6 @@
 use core::f64::consts::PI;
 
-use trig_const::{acos, acosh, asin, asinh, atan, atan2, cos, sin, tan};
+use trig_const::{acos, acosh, asin, asinh, atan, atan2, cos, ln, sin, tan};
 
 fn float_loop(start: f64, stop: f64, step: f64) -> impl Iterator<Item = f64> {
     core::iter::successors(Some(start), move |prev| {
@@ -52,6 +52,14 @@ fn test_asin() {
 fn test_acos() {
     for x in float_loop(-1.0, 1.0, 0.01) {
         float_eq!(acos(x), x.acos());
+    }
+}
+
+#[test]
+fn test_ln() {
+    for x in float_loop(0.01, 1000.0, 0.1) {
+        // Smallest n s.t. current impl passes with accuracy 10^{-n}
+        float_eq!(ln(x), x.ln(), 0.001);
     }
 }
 
