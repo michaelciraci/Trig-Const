@@ -58,7 +58,7 @@ fn test_acos() {
 #[test]
 fn test_atan() {
     for x in float_loop(-2.0 * PI, 2.0 * PI, 0.1) {
-        float_eq!(atan(x), x.atan(), 0.00001);
+        float_eq!(atan(x), x.atan());
     }
 }
 
@@ -66,7 +66,7 @@ fn test_atan() {
 fn test_atan2() {
     for x in float_loop(-2.0 * PI, 2.0 * PI, 0.1) {
         for y in float_loop(-2.0 * PI, 2.0 * PI, 0.1) {
-            float_eq!(atan2(x, y), x.atan2(y), 0.00001);
+            float_eq!(atan2(x, y), x.atan2(y));
         }
     }
 }

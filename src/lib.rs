@@ -56,9 +56,6 @@ use core::f64::{
 const TAYLOR_SERIES_SUMS: usize = 16;
 /// Number of sum iterations for ln
 const LN_SUM_TERMS: f64 = 1001.0;
-/// Number of sum iterations for atan. This series
-/// takes a while to converge
-const ATAN_SUMS: usize = 100_000;
 
 /// Cosine
 ///
@@ -300,8 +297,7 @@ pub const fn atan(x: f64) -> f64 {
         let x_squared = x * x;
 
         let mut n = 0;
-        // This series takes a bit longer to converge
-        while n < ATAN_SUMS {
+        while n < TAYLOR_SERIES_SUMS {
             let denom = (2 * n + 1) as f64;
             s += sign * term / denom;
             term *= x_squared;
@@ -315,13 +311,20 @@ pub const fn atan(x: f64) -> f64 {
 
         s
     }
-
-    if x > 1.0 {
-        FRAC_PI_2 - atan_taylor_series(1.0 / x)
-    } else if x < -1.0 {
-        -FRAC_PI_2 - atan_taylor_series(1.0 / x)
+    let sign = x.signum();
+    let mut val = x.abs();
+    if val > 1.0 {
+        sign * (FRAC_PI_2 - atan(1.0 / val))
     } else {
-        atan_taylor_series(x)
+        // Range reduction using the identity
+        // atan(x) = 2 atan(x / (1 + sqrt(1 + x^2)))
+        // until |x| \in [0, 0.125]
+        let mut multiplicand = 1.0;
+        while val > 0.125 {
+            val /= 1.0 + sqrt(1.0 + val * val);
+            multiplicand *= 2.0;
+        }
+        sign * multiplicand * atan_taylor_series(val)
     }
 }
 
