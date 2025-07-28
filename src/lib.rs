@@ -52,6 +52,19 @@ use core::f64::{
     consts::{FRAC_PI_2, PI},
 };
 
+// A const-compatible floor function.
+const fn floor(x: f64) -> f64 {
+    let i = x as i64;
+    let f = i as f64;
+    if f == x || x >= 0.0 {
+        f
+    } else {
+        // For negative x, casting truncates towards zero, so we subtract 1
+        // to get the correct floor.
+        f - 1.0
+    }
+}
+
 /// Number of sum iterations for Taylor series
 const TAYLOR_SERIES_SUMS: usize = 16;
 
@@ -64,36 +77,46 @@ const TAYLOR_SERIES_SUMS: usize = 16;
 /// const COS_PI: f64 = cos(PI);
 /// float_eq(COS_PI, -1.0);
 /// ```
-pub const fn cos(mut x: f64) -> f64 {
-    // If value is large, fold into smaller value
-    while x < -0.1 {
-        x += 2.0 * PI;
+pub const fn cos(x: f64) -> f64 {
+    // Handle edge cases. cos(inf) is undefined.
+    if x.is_nan() || x.is_infinite() {
+        return f64::NAN;
     }
-    while x > 2.0 * PI + 0.1 {
-        x -= 2.0 * PI;
-    }
-    let div = (x / PI) as u32;
-    x -= div as f64 * PI;
-    let sign = if div % 2 != 0 { -1.0 } else { 1.0 };
 
-    let mut result = 1.0;
-    let mut inter = 1.0;
-    let num = x * x;
-
-    let mut i = 1;
-    while i <= TAYLOR_SERIES_SUMS {
-        let comp = 2.0 * i as f64;
-        let den = comp * (comp - 1.0);
-        inter *= num / den;
-        if i % 2 == 0 {
-            result += inter;
-        } else {
-            result -= inter;
+    const fn taylor_cos(x: f64) -> f64 {
+        let x_squared = x * x;
+        let mut s = 1.0;
+        let mut term = 1.0;
+        let mut n = 1;
+        while n <= TAYLOR_SERIES_SUMS {
+            let comp = 2.0 * n as f64;
+            term *= -x_squared / (comp * (comp - 1.0));
+            s += term;
+            n += 1;
         }
-        i += 1;
+        s
     }
 
-    sign * result
+    const FRAC_PI_2: f64 = core::f64::consts::FRAC_PI_2;
+    const PI: f64 = core::f64::consts::PI;
+    const TWO_PI: f64 = 2.0 * PI;
+
+    let x = x - floor(x / TWO_PI) * TWO_PI;
+
+    // Corrected Quadrant Reduction
+    if x < FRAC_PI_2 {
+        // Quadrant I: [0, PI/2)
+        taylor_cos(x)
+    } else if x < PI {
+        // Quadrant II: [PI/2, PI)
+        -taylor_cos(PI - x)
+    } else if x < 1.5 * PI {
+        // Quadrant III: [PI, 1.5*PI)
+        -taylor_cos(x - PI)
+    } else {
+        // Quadrant IV: [1.5*PI, 2*PI)
+        taylor_cos(TWO_PI - x)
+    }
 }
 
 /// Sine
@@ -106,7 +129,57 @@ pub const fn cos(mut x: f64) -> f64 {
 /// float_eq(SIN_PI, 0.0);
 /// ```
 pub const fn sin(x: f64) -> f64 {
-    cos(x - PI / 2.0)
+    if x.is_nan() || x.is_infinite() {
+        return f64::NAN;
+    }
+
+    const fn floor(x: f64) -> f64 {
+        let i = x as i64;
+        let f = i as f64;
+        if f == x || x >= 0.0 {
+            f
+        } else {
+            f - 1.0
+        }
+    }
+
+    // Taylor series for sin(x) = x - x^3/3! + x^5/5! - ...
+    // This is only called with a small input in [0, PI/2].
+    const fn taylor_sin(x: f64) -> f64 {
+        let x_squared = x * x;
+        let mut s = x;
+        let mut term = x;
+        let mut n = 1;
+        while n <= TAYLOR_SERIES_SUMS {
+            let comp = 2.0 * n as f64 + 1.0;
+            term *= -x_squared / (comp * (comp - 1.0));
+            s += term;
+            n += 1;
+        }
+        s
+    }
+
+    const PI: f64 = core::f64::consts::PI;
+    const TWO_PI: f64 = 2.0 * PI;
+    const FRAC_PI_2: f64 = core::f64::consts::FRAC_PI_2;
+
+    // Perform a correct Euclidean-style remainder to map x to [0, 2*PI).
+    let x = x - floor(x / TWO_PI) * TWO_PI;
+
+    // Reduce to [0, PI/2] and apply the correct sign based on quadrant.
+    if x < FRAC_PI_2 {
+        // Quadrant I: [0, PI/2)
+        taylor_sin(x)
+    } else if x < PI {
+        // Quadrant II: [PI/2, PI) -> sin(x) = sin(PI - x)
+        taylor_sin(PI - x)
+    } else if x < 1.5 * PI {
+        // Quadrant III: [PI, 1.5*PI) -> sin(x) = -sin(x - PI)
+        -taylor_sin(x - PI)
+    } else {
+        // Quadrant IV: [1.5*PI, 2*PI) -> sin(x) = -sin(2*PI - x)
+        -taylor_sin(TWO_PI - x)
+    }
 }
 
 /// Tangent
@@ -429,17 +502,51 @@ pub const fn atanh(x: f64) -> f64 {
     sign * multiplicand * s
 }
 
-/// e^x
+/// e^x using range reduction for high precision.
 const fn exp(x: f64) -> f64 {
-    let mut i = 1;
-    let mut s = 1.0;
-
-    while i < 16 {
-        s += expi(x, i) / factorial(i as f64);
-        i += 1;
+    if x.is_nan() {
+        return f64::NAN;
+    } else if x == f64::INFINITY {
+        return f64::INFINITY;
+    } else if x == f64::NEG_INFINITY {
+        return 0.0;
     }
 
-    s
+    const LN2: f64 = core::f64::consts::LN_2;
+    let k = (x / LN2 + 0.5) as i64;
+
+    // Add checks to handle overflow before bit manipulation.
+    // The maximum exponent for a normal f64 corresponds to k=1023.
+    // k=1024 results in INFINITY.
+    if k >= 1024 {
+        return f64::INFINITY;
+    }
+    // The minimum exponent for a normal f64 corresponds to roughly k=-1022.
+    // Anything smaller will underflow to zero. -1075 is a safe threshold.
+    if k <= -1075 {
+        return 0.0;
+    }
+
+    let r = x - k as f64 * LN2;
+
+    // Taylor series for e^r
+    let mut s = 1.0;
+    let mut term = 1.0;
+    let mut n = 1;
+    while n < 20 {
+        term *= r / n as f64;
+        s += term;
+        n += 1;
+    }
+
+    // Calculate 2^k by directly constructing the f64's bit representation.
+    // An f64's exponent is stored with a bias of 1023. We shift the
+    // biased exponent left by 52 bits to position it correctly, leaving
+    // the mantissa as zero, effectively creating the number 1.0 * 2^k.
+    let two_k_bits = ((1023 + k) as u64) << 52;
+    let scale = f64::from_bits(two_k_bits);
+
+    scale * s
 }
 
 /// x^pow
