@@ -54,8 +54,6 @@ use core::f64::{
 
 /// Number of sum iterations for Taylor series
 const TAYLOR_SERIES_SUMS: usize = 16;
-/// Number of sum iterations for ln
-const LN_SUM_TERMS: f64 = 1001.0;
 
 /// Cosine
 ///
@@ -490,7 +488,8 @@ const fn sqrt(x: f64) -> f64 {
     current_guess
 }
 
-/// Computes natural log using Taylor series approximation
+/// Computes natural log using the identity
+/// `ln(x) = 2 arctanh((x - 1) / (x+1))`
 pub const fn ln(x: f64) -> f64 {
     if x.is_nan() || x < 0.0 {
         return f64::NAN;
@@ -501,35 +500,7 @@ pub const fn ln(x: f64) -> f64 {
     } else if x.is_infinite() {
         return f64::INFINITY;
     }
-
-    // Put into form ln(x) = ln(a * 2^k) = ln(a) + k * ln(2)
-
-    let mut a = x;
-    let mut k = 0;
-
-    // Normalize `a` to [1.0, 2.0)
-    while a >= 2.0 {
-        a /= 2.0;
-        k += 1;
-    }
-    while a < 1.0 {
-        a *= 2.0;
-        k -= 1;
-    }
-
-    let x = a - 1.0;
-
-    let mut s = 0.0;
-    let mut term = x;
-    let mut n = 1.0;
-
-    while n < LN_SUM_TERMS {
-        s += term;
-        n += 1.0;
-        term = -term * x * (n - 1.0) / n;
-    }
-
-    s + (k as f64) * f64::consts::LN_2
+    2.0 * atanh((x - 1.0) / (x + 1.0))
 }
 
 #[cfg(test)]

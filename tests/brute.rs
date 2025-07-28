@@ -58,8 +58,7 @@ fn test_acos() {
 #[test]
 fn test_ln() {
     for x in float_loop(0.01, 1000.0, 0.1) {
-        // Smallest n s.t. current impl passes with accuracy 10^{-n}
-        float_eq!(ln(x), x.ln(), 0.001);
+        float_eq!(ln(x), x.ln());
     }
 }
 
