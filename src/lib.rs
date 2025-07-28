@@ -395,6 +395,42 @@ pub const fn acosh(x: f64) -> f64 {
     }
 }
 
+/// Inverse hyperbolic tangent using range reduction.
+pub const fn atanh(x: f64) -> f64 {
+    if x.is_nan() || x.abs() > 1.0 {
+        return f64::NAN;
+    } else if x == 1.0 {
+        return f64::INFINITY;
+    } else if x == -1.0 {
+        return f64::NEG_INFINITY;
+    } else if x == 0.0 {
+        return 0.0;
+    }
+
+    let sign = x.signum();
+    let mut y = x.abs();
+
+    // Iteratively reduce `|x|` until it's in `[0,0.125]`
+    // using the identity arctanh(x) = 2arctanh(x / (1 + sqrt(1 - x^2)))
+    let mut multiplicand = 1.0;
+    while y > 0.125 {
+        y /= 1.0 + sqrt(1.0 - y * y);
+        multiplicand *= 2.0;
+    }
+
+    // atanh(y) = y + y^3/3 + y^5/5 + ...
+    let y_squared = y * y;
+    let mut term = y;
+    let mut s = y;
+    let mut n = 1;
+    while n < TAYLOR_SERIES_SUMS {
+        term *= y_squared;
+        s += term / ((2 * n + 1) as f64);
+        n += 1;
+    }
+    sign * multiplicand * s
+}
+
 /// e^x
 const fn exp(x: f64) -> f64 {
     let mut i = 1;

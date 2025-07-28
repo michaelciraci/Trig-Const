@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
-use trig_const::{acos, asin, asinh, atan, cos, ln, sin, tan};
+use trig_const::{acos, asin, asinh, atan, atanh, cos, ln, sin, tan};
 
 /// Benchmarks for the core trigonometric functions (sin, cos, tan).
 fn bench_core_trig(c: &mut Criterion) {
@@ -54,11 +54,25 @@ fn bench_log_hyperbolic(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmarks for the atanh function.
+fn bench_atanh(c: &mut Criterion) {
+    let mut group = c.benchmark_group("atanh");
+
+    // Test a value where it converges quickly
+    group.bench_function("atanh(0.5)", |b| b.iter(|| atanh(black_box(0.5))));
+
+    // Test a value where it converges slowest (close to 1)
+    group.bench_function("atanh(0.99)", |b| b.iter(|| atanh(black_box(0.99))));
+
+    group.finish();
+}
+
 // Register all benchmark groups with criterion's main harness.
 criterion_group!(
     benches,
     bench_core_trig,
     bench_inverse_trig,
-    bench_log_hyperbolic
+    bench_log_hyperbolic,
+    bench_atanh
 );
 criterion_main!(benches);
