@@ -1,6 +1,6 @@
 use core::f64::consts::PI;
 
-use trig_const::{acos, acosh, asin, asinh, atan, atan2, cos, sin, tan};
+use trig_const::{acos, acosh, asin, asinh, atan, atan2, cos, ln, pow, sin, tan};
 
 fn float_loop(start: f64, stop: f64, step: f64) -> impl Iterator<Item = f64> {
     core::iter::successors(Some(start), move |prev| {
@@ -57,16 +57,16 @@ fn test_acos() {
 
 #[test]
 fn test_atan() {
-    for x in float_loop(-2.0 * PI, 2.0 * PI, 0.1) {
-        float_eq!(atan(x), x.atan(), 0.00001);
+    for x in float_loop(-2.0 * PI, 2.0 * PI, 0.01) {
+        float_eq!(atan(x), x.atan());
     }
 }
 
 #[test]
 fn test_atan2() {
-    for x in float_loop(-2.0 * PI, 2.0 * PI, 0.1) {
-        for y in float_loop(-2.0 * PI, 2.0 * PI, 0.1) {
-            float_eq!(atan2(x, y), x.atan2(y), 0.00001);
+    for x in float_loop(-2.0 * PI, 2.0 * PI, 0.01) {
+        for y in float_loop(-2.0 * PI, 2.0 * PI, 0.01) {
+            float_eq!(atan2(x, y), x.atan2(y));
         }
     }
 }
@@ -82,5 +82,23 @@ fn test_asinh() {
 fn test_acosh() {
     for x in float_loop(0.0, 1.0, 0.01) {
         float_eq!(acosh(x), x.acosh());
+    }
+}
+
+#[test]
+fn test_ln() {
+    for x in float_loop(1.0, 10.0, 0.01) {
+        float_eq!(ln(x), x.ln());
+    }
+}
+
+#[test]
+fn test_pow() {
+    for x in float_loop(-10.0, 10.0, 1.0) {
+        for y in float_loop(-2.0, 3.0, 0.5) {
+            if x != 0.0 {
+                float_eq!(pow(x, y), x.powf(y));
+            }
+        }
     }
 }
