@@ -267,16 +267,19 @@ pub const fn acosh(x: f64) -> f64 {
 }
 
 /// e^x
+///
+/// Calculated using Pade Approximation
 pub const fn exp(x: f64) -> f64 {
-    let mut i = 1;
-    let mut s = 1.0;
+    let num = 1.0
+        + x / 2.0
+        + expi(x, 2) / 9.0
+        + expi(x, 3) / 72.0
+        + expi(x, 4) / 1008.0
+        + expi(x, 5) / 30_240.0;
+    let denom = 1.0 - x / 2.0 + expi(x, 2) / 9.0 - expi(x, 3) / 72.0 + expi(x, 4) / 1008.0
+        - expi(x, 5) / 30_240.0;
 
-    while i < 16 {
-        s += expi(x, i) / factorial(i as f64);
-        i += 1;
-    }
-
-    s
+    num / denom
 }
 
 /// x^pow
