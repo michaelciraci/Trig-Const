@@ -4,6 +4,8 @@
 #![allow(clippy::excessive_precision)]
 #![allow(clippy::eq_op)]
 
+mod acos;
+mod asin;
 mod atan;
 mod atan2;
 mod cos;
@@ -16,6 +18,8 @@ mod rem_pio2;
 mod rem_pio2_large;
 pub(crate) mod scalbn;
 mod sin;
+pub use acos::acos;
+pub use asin::asin;
 pub use atan::atan;
 pub use atan2::atan2;
 pub use cos::cos;
@@ -114,74 +118,6 @@ pub const fn sinh(x: f64) -> f64 {
 /// ```
 pub const fn cosh(x: f64) -> f64 {
     (exp(x) + exp(-x)) / 2.0
-}
-
-/// Arcsine
-///
-/// ```
-/// # use trig_const::asin;
-/// const ASIN_PI: f64 = asin(0.0);
-/// assert_eq!(ASIN_PI, 0.0);
-/// ```
-pub const fn asin(x: f64) -> f64 {
-    if x.is_infinite() || x.abs() > 1.0 {
-        return f64::NAN;
-    } else if x == 1.0 {
-        return core::f64::consts::FRAC_PI_2;
-    } else if x == -1.0 {
-        return -core::f64::consts::FRAC_PI_2;
-    }
-
-    // As we start to get past 0.8, the number of summations needed for an accurate
-    // Taylor series approximation starts to get unweidy. We can use the property
-    // that arcsin(x) = pi/2 - 2*arcsin(sqrt((1 - x) / 2)) to reduce
-    const RANGE_REDUCTION_THRESHOLD: f64 = 0.5;
-    if x.abs() > RANGE_REDUCTION_THRESHOLD {
-        let sign = x.signum();
-        let abs_x = x.abs();
-
-        let y = sqrt((1.0 - abs_x) / 2.0);
-        return sign * (core::f64::consts::FRAC_PI_2 - 2.0 * asin(y));
-    }
-
-    let mut n = 1;
-    let mut s = x;
-
-    while n < TAYLOR_SERIES_SUMS {
-        let numer1 = factorial(2.0 * n as f64);
-        let numer2 = expi(x, 2 * n as isize + 1);
-
-        // Calculate all denom terms;
-        let denom1 = expi(4.0, n as isize);
-        let denom2 = factorial(n as f64) * factorial(n as f64);
-        let denom3 = 2.0 * n as f64 + 1.0;
-
-        // Try to match terms to divide to stop number getting too large
-        let f1 = numer1 / denom2;
-        let f2 = numer2 / denom1;
-
-        s += f1 * f2 / denom3;
-
-        n += 1;
-    }
-
-    s
-}
-
-/// Arccosine
-///
-/// ```
-/// # use trig_const::acos;
-/// # use core::f64::consts::PI;
-/// const ACOS_1: f64 = acos(1.0);
-/// assert_eq!(ACOS_1, 0.0);
-/// ```
-pub const fn acos(x: f64) -> f64 {
-    if x.is_infinite() || x.abs() > 1.0 {
-        f64::NAN
-    } else {
-        core::f64::consts::FRAC_PI_2 - asin(x)
-    }
 }
 
 /// Inverse hyperbolic sine
@@ -292,6 +228,26 @@ pub const fn fabs(x: f64) -> f64 {
     } else {
         -x
     }
+}
+
+const fn with_set_high_word(f: f64, hi: u32) -> f64 {
+    let mut tmp = f.to_bits();
+    tmp &= 0x00000000_ffffffff;
+    tmp |= (hi as u64) << 32;
+    f64::from_bits(tmp)
+}
+const fn with_set_low_word(f: f64, lo: u32) -> f64 {
+    let mut tmp = f.to_bits();
+    tmp &= 0xffffffff_00000000;
+    tmp |= lo as u64;
+    f64::from_bits(tmp)
+}
+const fn get_high_word(x: f64) -> u32 {
+    (x.to_bits() >> 32) as u32
+}
+
+const fn get_low_word(x: f64) -> u32 {
+    x.to_bits() as u32
 }
 
 #[cfg(test)]
