@@ -66,7 +66,7 @@ pub const fn sin(x: f64) -> f64 {
 
     /* sin(Inf or NaN) is NaN */
     if ix >= 0x7ff00000 {
-        return x - x;
+        return f64::NAN;
     }
 
     /* argument reduction needed */

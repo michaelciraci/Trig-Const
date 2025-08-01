@@ -2,7 +2,6 @@
 #![no_std]
 #![forbid(unsafe_code)]
 #![allow(clippy::excessive_precision)]
-#![allow(clippy::eq_op)]
 
 mod acos;
 mod asin;

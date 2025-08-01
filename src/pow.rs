@@ -212,7 +212,7 @@ pub const fn pow(x: f64, y: f64) -> f64 {
 
             if hx < 0 {
                 if ((ix - 0x3ff00000) | yisint) == 0 {
-                    z = (z - z) / (z - z); /* (-1)**non-int is NaN */
+                    z = f64::NAN; /* (-1)**non-int is NaN */
                 } else if yisint == 1 {
                     z = -z; /* (x<0)**odd = -(|x|**odd) */
                 }
@@ -226,7 +226,7 @@ pub const fn pow(x: f64, y: f64) -> f64 {
     if hx < 0 {
         if yisint == 0 {
             /* (x<0)**(non-int) is NaN */
-            return (x - x) / (x - x);
+            return f64::NAN;
         }
 
         if yisint == 1 {

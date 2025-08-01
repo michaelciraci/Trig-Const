@@ -78,7 +78,7 @@ pub const fn asin(mut x: f64) -> f64 {
             /* asin(1) = +-pi/2 with inexact */
             return x * PIO2_HI + f64::from_bits(0x3870000000000000);
         } else {
-            return 0.0 / (x - x);
+            return f64::INFINITY;
         }
     }
     /* |x| < 0.5 */

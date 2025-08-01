@@ -160,7 +160,7 @@ pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
      */
     if ix >= 0x7ff00000 {
         /* x is inf or NaN */
-        let y0 = x - x;
+        let y0 = 0.0;
         let y1 = y0;
         return (0, y0, y1);
     }

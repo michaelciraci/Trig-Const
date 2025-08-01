@@ -74,7 +74,7 @@ pub const fn acos(x: f64) -> f64 {
             }
             return 0.;
         }
-        return 0. / (x - x);
+        return f64::INFINITY;
     }
     /* |x| < 0.5 */
     if ix < 0x3fe00000 {

@@ -79,10 +79,10 @@ pub const fn ln(mut x: f64) -> f64 {
     if (hx < 0x00100000) || ((hx >> 31) != 0) {
         /* x < 2**-126  */
         if ui << 1 == 0 {
-            return -1. / (x * x); /* log(+-0)=-inf */
+            return -f64::INFINITY; /* log(+-0)=-inf */
         }
         if hx >> 31 != 0 {
-            return (x - x) / 0.0; /* log(-#) = NaN */
+            return f64::NAN; /* log(-#) = NaN */
         }
         /* subnormal number, scale x up */
         k -= 54;
