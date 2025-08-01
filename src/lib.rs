@@ -1,77 +1,31 @@
 #![doc = include_str!("../README.md")]
 #![no_std]
 #![forbid(unsafe_code)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::eq_op)]
 
 mod atan;
 mod atan2;
+mod cos;
+mod floor;
+mod k_cos;
+mod k_sin;
 mod ln;
 mod pow;
+mod rem_pio2;
+mod rem_pio2_large;
+pub(crate) mod scalbn;
+mod sin;
 pub use atan::atan;
 pub use atan2::atan2;
+pub use cos::cos;
+pub use floor::floor;
 pub use ln::ln;
 pub use pow::pow;
-
-use core::f64::{
-    self,
-    consts::{PI, TAU},
-};
+pub use sin::sin;
 
 /// Number of sum iterations for Taylor series
 const TAYLOR_SERIES_SUMS: usize = 16;
-
-/// Cosine
-///
-/// ```
-/// # use trig_const::cos;
-/// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
-/// const COS_PI: f64 = cos(PI);
-/// float_eq(COS_PI, -1.0);
-/// ```
-pub const fn cos(mut x: f64) -> f64 {
-    // If value is large, fold into smaller value
-    while x < TAU {
-        x += TAU;
-    }
-    while x > TAU {
-        x -= TAU;
-    }
-    let div = (x / PI) as u32;
-    x -= div as f64 * PI;
-    let sign = if div % 2 != 0 { -1.0 } else { 1.0 };
-
-    let mut result = 1.0;
-    let mut inter = 1.0;
-    let num = x * x;
-
-    let mut i = 1;
-    while i <= TAYLOR_SERIES_SUMS {
-        let comp = 2.0 * i as f64;
-        let den = comp * (comp - 1.0);
-        inter *= num / den;
-        if i % 2 == 0 {
-            result += inter;
-        } else {
-            result -= inter;
-        }
-        i += 1;
-    }
-
-    sign * result
-}
-
-/// Sine
-///
-/// ```
-/// # use trig_const::sin;
-/// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
-/// const SIN_PI: f64 = sin(PI);
-/// float_eq(SIN_PI, 0.0);
-/// ```
-pub const fn sin(x: f64) -> f64 {
-    cos(x - PI / 2.0)
-}
 
 /// Tangent
 ///
@@ -173,9 +127,9 @@ pub const fn asin(x: f64) -> f64 {
     if x.is_infinite() || x.abs() > 1.0 {
         return f64::NAN;
     } else if x == 1.0 {
-        return f64::consts::FRAC_PI_2;
+        return core::f64::consts::FRAC_PI_2;
     } else if x == -1.0 {
-        return -f64::consts::FRAC_PI_2;
+        return -core::f64::consts::FRAC_PI_2;
     }
 
     // As we start to get past 0.8, the number of summations needed for an accurate
@@ -187,7 +141,7 @@ pub const fn asin(x: f64) -> f64 {
         let abs_x = x.abs();
 
         let y = sqrt((1.0 - abs_x) / 2.0);
-        return sign * (f64::consts::FRAC_PI_2 - 2.0 * asin(y));
+        return sign * (core::f64::consts::FRAC_PI_2 - 2.0 * asin(y));
     }
 
     let mut n = 1;
@@ -226,7 +180,7 @@ pub const fn acos(x: f64) -> f64 {
     if x.is_infinite() || x.abs() > 1.0 {
         f64::NAN
     } else {
-        f64::consts::FRAC_PI_2 - asin(x)
+        core::f64::consts::FRAC_PI_2 - asin(x)
     }
 }
 
