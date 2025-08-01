@@ -4,9 +4,12 @@
 #![allow(clippy::excessive_precision)]
 
 mod acos;
+mod acosh;
 mod asin;
+mod asinh;
 mod atan;
 mod atan2;
+mod atanh;
 mod cos;
 mod exp;
 mod floor;
@@ -14,6 +17,7 @@ mod k_cos;
 mod k_sin;
 pub(crate) mod k_tan;
 mod ln;
+pub(crate) mod log1p;
 mod pow;
 mod rem_pio2;
 mod rem_pio2_large;
@@ -21,9 +25,12 @@ pub(crate) mod scalbn;
 mod sin;
 mod tan;
 pub use acos::acos;
+pub use acosh::acosh;
 pub use asin::asin;
+pub use asinh::asinh;
 pub use atan::atan;
 pub use atan2::atan2;
+pub use atanh::atanh;
 pub use cos::cos;
 pub use exp::exp;
 pub use floor::floor;
@@ -107,42 +114,6 @@ pub const fn sinh(x: f64) -> f64 {
 /// ```
 pub const fn cosh(x: f64) -> f64 {
     (exp(x) + exp(-x)) / 2.0
-}
-
-/// Inverse hyperbolic sine
-///
-/// ```
-/// # use trig_const::asinh;
-/// const ASINH_1: f64 = asinh(0.0);
-/// assert_eq!(ASINH_1, 0.0);
-/// ```
-pub const fn asinh(x: f64) -> f64 {
-    if x.is_nan() {
-        f64::NAN
-    } else if x.is_infinite() {
-        x
-    } else {
-        ln(x + sqrt(x * x + 1.0))
-    }
-}
-
-/// Inverse hyperbolic cosine
-///
-/// ```
-/// # use trig_const::acosh;
-/// const ACOSH_1: f64 = acosh(1.0);
-/// assert_eq!(ACOSH_1, 0.0);
-/// ```
-pub const fn acosh(x: f64) -> f64 {
-    if x.is_nan() {
-        f64::NAN
-    } else if x.is_infinite() {
-        x
-    } else if x < 1.0 {
-        f64::NAN
-    } else {
-        ln(x + sqrt(x * x - 1.0))
-    }
 }
 
 /// x^pow
