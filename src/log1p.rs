@@ -68,17 +68,10 @@ const LG7: f64 = 1.479819860511658591e-01; /* 3FC2F112 DF3E5244 */
 /// The natural logarithm of 1+`x` (f64).
 pub const fn log1p(x: f64) -> f64 {
     let mut ui: u64 = x.to_bits();
-    
+
     let mut f: f64 = 0.;
     let mut c: f64 = 0.;
-    
-    
-    
-    
-    
-    
-    
-    
+
     let mut hu: u32;
     let mut k: i32;
 
