@@ -59,9 +59,8 @@ pub const fn cot(x: f64) -> f64 {
 /// ```
 /// # use trig_const::sec;
 /// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
 /// const SEC_PI: f64 = sec(PI);
-/// float_eq(SEC_PI, -1.0);
+/// assert_eq!(SEC_PI, -1.0);
 /// ```
 pub const fn sec(x: f64) -> f64 {
     let cos_calc = cos(x);
@@ -77,9 +76,8 @@ pub const fn sec(x: f64) -> f64 {
 /// ```
 /// # use trig_const::csc;
 /// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
 /// const CSC_PI_2: f64 = csc(PI / 2.0);
-/// float_eq(CSC_PI_2, 1.0);
+/// assert_eq!(CSC_PI_2, 1.0);
 /// ```
 pub const fn csc(x: f64) -> f64 {
     let sin_calc = sin(x);
