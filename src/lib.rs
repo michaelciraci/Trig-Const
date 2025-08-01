@@ -1,90 +1,39 @@
 #![doc = include_str!("../README.md")]
 #![no_std]
 #![forbid(unsafe_code)]
+#![allow(clippy::excessive_precision)]
 
+mod acos;
+mod asin;
 mod atan;
 mod atan2;
+mod cos;
+mod exp;
+mod floor;
+mod k_cos;
+mod k_sin;
+pub(crate) mod k_tan;
 mod ln;
 mod pow;
+mod rem_pio2;
+mod rem_pio2_large;
+pub(crate) mod scalbn;
+mod sin;
+mod tan;
+pub use acos::acos;
+pub use asin::asin;
 pub use atan::atan;
 pub use atan2::atan2;
+pub use cos::cos;
+pub use exp::exp;
+pub use floor::floor;
 pub use ln::ln;
 pub use pow::pow;
-
-use core::f64::{
-    self,
-    consts::{PI, TAU},
-};
+pub use sin::sin;
+pub use tan::tan;
 
 /// Number of sum iterations for Taylor series
 const TAYLOR_SERIES_SUMS: usize = 16;
-
-/// Cosine
-///
-/// ```
-/// # use trig_const::cos;
-/// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
-/// const COS_PI: f64 = cos(PI);
-/// float_eq(COS_PI, -1.0);
-/// ```
-pub const fn cos(mut x: f64) -> f64 {
-    // If value is large, fold into smaller value
-    while x < TAU {
-        x += TAU;
-    }
-    while x > TAU {
-        x -= TAU;
-    }
-    let div = (x / PI) as u32;
-    x -= div as f64 * PI;
-    let sign = if div % 2 != 0 { -1.0 } else { 1.0 };
-
-    let mut result = 1.0;
-    let mut inter = 1.0;
-    let num = x * x;
-
-    let mut i = 1;
-    while i <= TAYLOR_SERIES_SUMS {
-        let comp = 2.0 * i as f64;
-        let den = comp * (comp - 1.0);
-        inter *= num / den;
-        if i % 2 == 0 {
-            result += inter;
-        } else {
-            result -= inter;
-        }
-        i += 1;
-    }
-
-    sign * result
-}
-
-/// Sine
-///
-/// ```
-/// # use trig_const::sin;
-/// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
-/// const SIN_PI: f64 = sin(PI);
-/// float_eq(SIN_PI, 0.0);
-/// ```
-pub const fn sin(x: f64) -> f64 {
-    cos(x - PI / 2.0)
-}
-
-/// Tangent
-///
-/// ```
-/// # use trig_const::tan;
-/// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
-/// const TAN_PI_4: f64 = tan(PI / 4.0);
-/// float_eq(TAN_PI_4, 1.0);
-/// ```
-pub const fn tan(x: f64) -> f64 {
-    sin(x) / cos(x)
-}
 
 /// Cotangent
 ///
@@ -109,9 +58,8 @@ pub const fn cot(x: f64) -> f64 {
 /// ```
 /// # use trig_const::sec;
 /// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
 /// const SEC_PI: f64 = sec(PI);
-/// float_eq(SEC_PI, -1.0);
+/// assert_eq!(SEC_PI, -1.0);
 /// ```
 pub const fn sec(x: f64) -> f64 {
     let cos_calc = cos(x);
@@ -127,9 +75,8 @@ pub const fn sec(x: f64) -> f64 {
 /// ```
 /// # use trig_const::csc;
 /// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
 /// const CSC_PI_2: f64 = csc(PI / 2.0);
-/// float_eq(CSC_PI_2, 1.0);
+/// assert_eq!(CSC_PI_2, 1.0);
 /// ```
 pub const fn csc(x: f64) -> f64 {
     let sin_calc = sin(x);
@@ -160,74 +107,6 @@ pub const fn sinh(x: f64) -> f64 {
 /// ```
 pub const fn cosh(x: f64) -> f64 {
     (exp(x) + exp(-x)) / 2.0
-}
-
-/// Arcsine
-///
-/// ```
-/// # use trig_const::asin;
-/// const ASIN_PI: f64 = asin(0.0);
-/// assert_eq!(ASIN_PI, 0.0);
-/// ```
-pub const fn asin(x: f64) -> f64 {
-    if x.is_infinite() || x.abs() > 1.0 {
-        return f64::NAN;
-    } else if x == 1.0 {
-        return f64::consts::FRAC_PI_2;
-    } else if x == -1.0 {
-        return -f64::consts::FRAC_PI_2;
-    }
-
-    // As we start to get past 0.8, the number of summations needed for an accurate
-    // Taylor series approximation starts to get unweidy. We can use the property
-    // that arcsin(x) = pi/2 - 2*arcsin(sqrt((1 - x) / 2)) to reduce
-    const RANGE_REDUCTION_THRESHOLD: f64 = 0.5;
-    if x.abs() > RANGE_REDUCTION_THRESHOLD {
-        let sign = x.signum();
-        let abs_x = x.abs();
-
-        let y = sqrt((1.0 - abs_x) / 2.0);
-        return sign * (f64::consts::FRAC_PI_2 - 2.0 * asin(y));
-    }
-
-    let mut n = 1;
-    let mut s = x;
-
-    while n < TAYLOR_SERIES_SUMS {
-        let numer1 = factorial(2.0 * n as f64);
-        let numer2 = expi(x, 2 * n as isize + 1);
-
-        // Calculate all denom terms;
-        let denom1 = expi(4.0, n as isize);
-        let denom2 = factorial(n as f64) * factorial(n as f64);
-        let denom3 = 2.0 * n as f64 + 1.0;
-
-        // Try to match terms to divide to stop number getting too large
-        let f1 = numer1 / denom2;
-        let f2 = numer2 / denom1;
-
-        s += f1 * f2 / denom3;
-
-        n += 1;
-    }
-
-    s
-}
-
-/// Arccosine
-///
-/// ```
-/// # use trig_const::acos;
-/// # use core::f64::consts::PI;
-/// const ACOS_1: f64 = acos(1.0);
-/// assert_eq!(ACOS_1, 0.0);
-/// ```
-pub const fn acos(x: f64) -> f64 {
-    if x.is_infinite() || x.abs() > 1.0 {
-        f64::NAN
-    } else {
-        f64::consts::FRAC_PI_2 - asin(x)
-    }
 }
 
 /// Inverse hyperbolic sine
@@ -264,22 +143,6 @@ pub const fn acosh(x: f64) -> f64 {
     } else {
         ln(x + sqrt(x * x - 1.0))
     }
-}
-
-/// e^x
-///
-/// Calculated using Pade Approximation
-pub const fn exp(x: f64) -> f64 {
-    let num = 1.0
-        + x / 2.0
-        + expi(x, 2) / 9.0
-        + expi(x, 3) / 72.0
-        + expi(x, 4) / 1008.0
-        + expi(x, 5) / 30_240.0;
-    let denom = 1.0 - x / 2.0 + expi(x, 2) / 9.0 - expi(x, 3) / 72.0 + expi(x, 4) / 1008.0
-        - expi(x, 5) / 30_240.0;
-
-    num / denom
 }
 
 /// x^pow
@@ -338,6 +201,26 @@ pub const fn fabs(x: f64) -> f64 {
     } else {
         -x
     }
+}
+
+const fn with_set_high_word(f: f64, hi: u32) -> f64 {
+    let mut tmp = f.to_bits();
+    tmp &= 0x00000000_ffffffff;
+    tmp |= (hi as u64) << 32;
+    f64::from_bits(tmp)
+}
+const fn with_set_low_word(f: f64, lo: u32) -> f64 {
+    let mut tmp = f.to_bits();
+    tmp &= 0xffffffff_00000000;
+    tmp |= lo as u64;
+    f64::from_bits(tmp)
+}
+const fn get_high_word(x: f64) -> u32 {
+    (x.to_bits() >> 32) as u32
+}
+
+const fn get_low_word(x: f64) -> u32 {
+    x.to_bits() as u32
 }
 
 #[cfg(test)]

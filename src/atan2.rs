@@ -45,9 +45,8 @@ use crate::{atan, fabs};
 /// ```
 /// # use trig_const::atan2;
 /// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
 /// const ATAN2_0_1: f64 = atan2(0.0, 1.0);
-/// float_eq(ATAN2_0_1, 0.0);
+/// assert_eq!(ATAN2_0_1, 0.0);
 /// ```
 pub const fn atan2(y: f64, x: f64) -> f64 {
     const PI_LO: f64 = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */

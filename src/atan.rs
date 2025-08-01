@@ -64,9 +64,8 @@ const AT: [f64; 11] = [
 /// ```
 /// # use trig_const::atan;
 /// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
 /// const ATAN_1: f64 = atan(1.0);
-/// float_eq(ATAN_1, PI / 4.0);
+/// assert_eq!(ATAN_1, PI / 4.0);
 /// ```
 pub const fn atan(x: f64) -> f64 {
     let mut x = x;

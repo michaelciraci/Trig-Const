@@ -57,7 +57,7 @@
 // compiler will convert from decimal to binary accurately enough
 // to produce the hexadecimal values shown.
 //
-use crate::{expi, fabs, sqrt};
+use crate::{fabs, get_high_word, scalbn::scalbn, sqrt, with_set_high_word, with_set_low_word};
 
 const BP: [f64; 2] = [1.0, 1.5];
 const DP_H: [f64; 2] = [0.0, 5.84962487220764160156e-01]; /* 0x3fe2b803_40000000 */
@@ -212,7 +212,7 @@ pub const fn pow(x: f64, y: f64) -> f64 {
 
             if hx < 0 {
                 if ((ix - 0x3ff00000) | yisint) == 0 {
-                    z = (z - z) / (z - z); /* (-1)**non-int is NaN */
+                    z = f64::NAN; /* (-1)**non-int is NaN */
                 } else if yisint == 1 {
                     z = -z; /* (x<0)**odd = -(|x|**odd) */
                 }
@@ -226,7 +226,7 @@ pub const fn pow(x: f64, y: f64) -> f64 {
     if hx < 0 {
         if yisint == 0 {
             /* (x<0)**(non-int) is NaN */
-            return (x - x) / (x - x);
+            return f64::NAN;
         }
 
         if yisint == 1 {
@@ -411,24 +411,4 @@ pub const fn pow(x: f64, y: f64) -> f64 {
     }
 
     s * z
-}
-
-const fn with_set_high_word(f: f64, hi: u32) -> f64 {
-    let mut tmp = f.to_bits();
-    tmp &= 0x00000000_ffffffff;
-    tmp |= (hi as u64) << 32;
-    f64::from_bits(tmp)
-}
-const fn with_set_low_word(f: f64, lo: u32) -> f64 {
-    let mut tmp = f.to_bits();
-    tmp &= 0xffffffff_00000000;
-    tmp |= lo as u64;
-    f64::from_bits(tmp)
-}
-const fn get_high_word(x: f64) -> u32 {
-    (x.to_bits() >> 32) as u32
-}
-
-const fn scalbn(x: f64, n: i32) -> f64 {
-    x * expi(2.0, n as isize)
 }
