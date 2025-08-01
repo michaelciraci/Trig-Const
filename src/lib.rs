@@ -9,40 +9,32 @@ mod asin;
 mod atan;
 mod atan2;
 mod cos;
+mod exp;
 mod floor;
 mod k_cos;
 mod k_sin;
+pub(crate) mod k_tan;
 mod ln;
 mod pow;
 mod rem_pio2;
 mod rem_pio2_large;
 pub(crate) mod scalbn;
 mod sin;
+mod tan;
 pub use acos::acos;
 pub use asin::asin;
 pub use atan::atan;
 pub use atan2::atan2;
 pub use cos::cos;
+pub use exp::exp;
 pub use floor::floor;
 pub use ln::ln;
 pub use pow::pow;
 pub use sin::sin;
+pub use tan::tan;
 
 /// Number of sum iterations for Taylor series
 const TAYLOR_SERIES_SUMS: usize = 16;
-
-/// Tangent
-///
-/// ```
-/// # use trig_const::tan;
-/// # use core::f64::consts::PI;
-/// # fn float_eq(lhs: f64, rhs: f64) { assert!((lhs - rhs).abs() < 0.0001, "lhs: {}, rhs: {}", lhs, rhs); }
-/// const TAN_PI_4: f64 = tan(PI / 4.0);
-/// float_eq(TAN_PI_4, 1.0);
-/// ```
-pub const fn tan(x: f64) -> f64 {
-    sin(x) / cos(x)
-}
 
 /// Cotangent
 ///
@@ -154,22 +146,6 @@ pub const fn acosh(x: f64) -> f64 {
     } else {
         ln(x + sqrt(x * x - 1.0))
     }
-}
-
-/// e^x
-///
-/// Calculated using Pade Approximation
-pub const fn exp(x: f64) -> f64 {
-    let num = 1.0
-        + x / 2.0
-        + expi(x, 2) / 9.0
-        + expi(x, 3) / 72.0
-        + expi(x, 4) / 1008.0
-        + expi(x, 5) / 30_240.0;
-    let denom = 1.0 - x / 2.0 + expi(x, 2) / 9.0 - expi(x, 3) / 72.0 + expi(x, 4) / 1008.0
-        - expi(x, 5) / 30_240.0;
-
-    num / denom
 }
 
 /// x^pow

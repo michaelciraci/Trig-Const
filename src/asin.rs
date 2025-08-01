@@ -69,18 +69,11 @@ const fn comp_r(z: f64) -> f64 {
 /// assert_eq!(ASIN_PI, 0.0);
 /// ```
 pub const fn asin(mut x: f64) -> f64 {
-    let z: f64;
-    let r: f64;
-    let s: f64;
-    let hx: u32;
-    let ix: u32;
-
-    hx = get_high_word(x);
-    ix = hx & 0x7fffffff;
+    let hx: u32 = get_high_word(x);
+    let ix: u32 = hx & 0x7fffffff;
     /* |x| >= 1 or nan */
     if ix >= 0x3ff00000 {
-        let lx: u32;
-        lx = get_low_word(x);
+        let lx: u32 = get_low_word(x);
         if ((ix - 0x3ff00000) | lx) == 0 {
             /* asin(1) = +-pi/2 with inexact */
             return x * PIO2_HI + f64::from_bits(0x3870000000000000);
@@ -98,18 +91,16 @@ pub const fn asin(mut x: f64) -> f64 {
         }
     }
     /* 1 > |x| >= 0.5 */
-    z = (1.0 - fabs(x)) * 0.5;
-    s = sqrt(z);
-    r = comp_r(z);
+    let z: f64 = (1.0 - fabs(x)) * 0.5;
+    let s: f64 = sqrt(z);
+    let r: f64 = comp_r(z);
     if ix >= 0x3fef3333 {
         /* if |x| > 0.975 */
         x = PIO2_HI - (2. * (s + s * r) - PIO2_LO);
     } else {
-        let f: f64;
-        let c: f64;
         /* f+c = sqrt(z) */
-        f = with_set_low_word(s, 0);
-        c = (z - f * f) / (s + f);
+        let f: f64 = with_set_low_word(s, 0);
+        let c: f64 = (z - f * f) / (s + f);
         x = 0.5 * PIO2_HI - (2.0 * s * r - (PIO2_LO - 2.0 * c) - (0.5 * PIO2_HI - 2.0 * f));
     }
     if hx >> 31 != 0 {

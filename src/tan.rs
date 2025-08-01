@@ -1,4 +1,4 @@
-// origin: FreeBSD /usr/src/lib/msun/src/s_cos.c */
+// origin: FreeBSD /usr/src/lib/msun/src/s_tan.c */
 //
 // ====================================================
 // Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -9,12 +9,13 @@
 // is preserved.
 // ====================================================
 
-// cos(x)
-// Return cosine function of x.
+use super::{k_tan::k_tan, rem_pio2::rem_pio2};
+
+// tan(x)
+// Return tangent function of x.
 //
 // kernel function:
-//      k_sin           ... sine function on [-pi/4,pi/4]
-//      k_cos           ... cosine function on [-pi/4,pi/4]
+//      k_tan           ... tangent function on [-pi/4,pi/4]
 //      rem_pio2        ... argument reduction routine
 //
 // Method.
@@ -38,44 +39,31 @@
 //
 // Accuracy:
 //      TRIG(x) returns trig(x) nearly rounded
-//
 
-use crate::{k_cos::k_cos, k_sin::k_sin, rem_pio2::rem_pio2};
-
-/// Cosine
+/// The tangent of `x` (f64).
 ///
-/// ```
-/// # use trig_const::cos;
-/// # use core::f64::consts::PI;
-/// const COS_PI: f64 = cos(PI);
-/// assert_eq!(COS_PI, -1.0);
-/// ```
-pub const fn cos(x: f64) -> f64 {
-    let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
+/// `x` is specified in radians.
+pub const fn tan(x: f64) -> f64 {
+    // let x1p120 = f32::from_bits(0x7b800000); // 0x1p120f === 2 ^ 120
 
+    let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
     /* |x| ~< pi/4 */
     if ix <= 0x3fe921fb {
-        if ix < 0x3e46a09e {
-            /* if x < 2**-27 * sqrt(2) */
-            /* raise inexact if x != 0 */
-            if x as i32 == 0 {
-                return 1.0;
-            }
+        if ix < 0x3e400000 {
+            /* |x| < 2**-27 */
+            /* raise inexact if x!=0 and underflow if subnormal */
+            // force_eval!(if ix < 0x00100000 { x / x1p120 as f64 } else { x + x1p120 as f64 });
+            return x;
         }
-        return k_cos(x, 0.0);
+        return k_tan(x, 0.0, 0);
     }
 
-    /* cos(Inf or NaN) is NaN */
+    /* tan(Inf or NaN) is NaN */
     if ix >= 0x7ff00000 {
         return x - x;
     }
 
-    /* argument reduction needed */
+    /* argument reduction */
     let (n, y0, y1) = rem_pio2(x);
-    match n & 3 {
-        0 => k_cos(y0, y1),
-        1 => -k_sin(y0, y1, 1),
-        2 => -k_cos(y0, y1),
-        _ => k_sin(y0, y1, 1),
-    }
+    k_tan(y0, y1, n & 1)
 }

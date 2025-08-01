@@ -1,6 +1,6 @@
 use core::f64::consts::PI;
 
-use trig_const::{acos, acosh, asin, asinh, atan, atan2, cos, ln, pow, sin, tan};
+use trig_const::{acos, acosh, asin, asinh, atan, atan2, cos, ln, pow, sin, sqrt, tan};
 
 fn float_loop(start: f64, stop: f64, step: f64) -> impl Iterator<Item = f64> {
     core::iter::successors(Some(start), move |prev| {
@@ -16,27 +16,27 @@ macro_rules! float_eq {
         }
     };
     ($lhs:expr, $rhs:expr) => {
-        float_eq!($lhs, $rhs, 0.0000000001);
+        float_eq!($lhs, $rhs, 10e-12);
     };
 }
 
 #[test]
 fn test_sin() {
-    for x in float_loop(-8.0 * PI, 8.0 * PI, 0.1) {
+    for x in float_loop(-8.0 * PI, 8.0 * PI, 0.01) {
         float_eq!(sin(x), x.sin());
     }
 }
 
 #[test]
 fn test_cos() {
-    for x in float_loop(-8.0 * PI, 8.0 * PI, 0.1) {
+    for x in float_loop(-8.0 * PI, 8.0 * PI, 0.01) {
         float_eq!(cos(x), x.cos());
     }
 }
 
 #[test]
 fn test_tan() {
-    for x in float_loop(-8.0 * PI, 8.0 * PI, 0.1) {
+    for x in float_loop(-8.0 * PI, 8.0 * PI, 0.01) {
         float_eq!(tan(x), x.tan());
     }
 }
@@ -89,6 +89,13 @@ fn test_acosh() {
 fn test_ln() {
     for x in float_loop(1.0, 10.0, 0.01) {
         float_eq!(ln(x), x.ln());
+    }
+}
+
+#[test]
+fn test_sqrt() {
+    for x in float_loop(0.0, 10.0, 0.01) {
+        float_eq!(sqrt(x), x.sqrt());
     }
 }
 

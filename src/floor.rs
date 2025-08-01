@@ -1,3 +1,12 @@
+/* SPDX-License-Identifier: MIT
+ * origin: musl src/math/floor.c */
+
+//! Generic `floor` algorithm.
+//!
+//! Note that this uses the algorithm from musl's `floorf` rather than `floor` or `floorl` because
+//! performance seems to be better (based on icount) and it does not seem to experience rounding
+//! errors on i386.
+
 const SIG_BITS: u32 = 52;
 const BITS: u32 = 64;
 const EXP_BITS: u32 = BITS - SIG_BITS - 1;
