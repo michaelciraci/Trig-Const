@@ -1,5 +1,11 @@
 ## trig-const
 
+[![Rust](https://github.com/michaelciraci/Trig-Const/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/michaelciraci/Trig-Const/actions/workflows/rust.yml)
+[![](https://img.shields.io/crates/v/trig-const.svg)](https://crates.io/crates/trig-const)
+[![](https://img.shields.io/crates/l/trig-const.svg)](https://crates.io/crates/trig-const)
+[![](https://docs.rs/trig-const/badge.svg)](https://docs.rs/trig-const/)
+![minimum rustc 1.85](https://img.shields.io/badge/rustc-1.85+-red.svg)
+
 Rust implementation of const trig functions.
 
 The majority of functions have been implemented using a modified version of [libm](https://crates.io/crates/libm) for const Rust.
@@ -37,7 +43,7 @@ use trig_const::{atan2, cos, sin};
 /// 45° in radians
 const DEG_45: f64 = 45.0 * PI / 180.0;
 
-/// Pre-computed matrix to rotate object 30°
+/// Pre-computed matrix to rotate object 45°
 const ROTATIONAL_MATRIX: [[f64; 3]; 3] = [
     [cos(DEG_45), 0.0, sin(DEG_45)],
     [0.0, 1.0, 0.0],
@@ -84,4 +90,4 @@ This crate was originally implemented using trigonometric Taylor series approxim
   - GitHub Repo: <https://github.com/AZHenley/cosine>
   - Article: <https://austinhenley.com/blog/cosine.html>
 
-However, several functions have since been implemented using a modified version of [lib](https://crates.io/crates/libm) for const Rust which improved precision.
+However, several functions have since been implemented using a modified version of [libm](https://crates.io/crates/libm) for const Rust which improved precision.
