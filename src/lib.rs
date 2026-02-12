@@ -2,6 +2,7 @@
 #![no_std]
 #![forbid(unsafe_code)]
 #![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
 
 mod acos;
 mod acosh;
