@@ -1,8 +1,13 @@
 #![doc = include_str!("../README.md")]
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
 #![allow(clippy::excessive_precision)]
 #![allow(clippy::approx_constant)]
+#![allow(internal_features)]
+#![cfg_attr(feature = "nightly", feature(core_intrinsics, const_eval_select))]
+
+#[macro_use]
+pub(crate) mod macros;
 
 mod acos;
 mod acosh;
@@ -103,6 +108,10 @@ pub const fn csc(x: f64) -> f64 {
 /// assert_eq!(SINH_0, 0.0);
 /// ```
 pub const fn sinh(x: f64) -> f64 {
+    nightly_exp!(sinh, sinh_inner, x)
+}
+
+const fn sinh_inner(x: f64) -> f64 {
     (exp(x) - exp(-x)) / 2.0
 }
 
@@ -114,6 +123,10 @@ pub const fn sinh(x: f64) -> f64 {
 /// assert_eq!(COSH_0, 1.0);
 /// ```
 pub const fn cosh(x: f64) -> f64 {
+    nightly_exp!(cosh, cosh_inner, x)
+}
+
+const fn cosh_inner(x: f64) -> f64 {
     (exp(x) + exp(-x)) / 2.0
 }
 
@@ -149,6 +162,10 @@ pub const fn factorial(mut x: f64) -> f64 {
 
 /// Const sqrt function using Newton's method
 pub const fn sqrt(x: f64) -> f64 {
+    nightly_exp!(sqrt, sqrt_inner, x)
+}
+
+const fn sqrt_inner(x: f64) -> f64 {
     if x.is_nan() || x < 0.0 {
         return f64::NAN;
     } else if x.is_infinite() || x == 0.0 {
@@ -168,11 +185,7 @@ pub const fn sqrt(x: f64) -> f64 {
 }
 
 pub const fn fabs(x: f64) -> f64 {
-    if x > 0.0 {
-        x
-    } else {
-        -x
-    }
+    x.abs()
 }
 
 const fn with_set_high_word(f: f64, hi: u32) -> f64 {

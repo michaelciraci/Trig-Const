@@ -60,7 +60,25 @@
  * to produce the hexadecimal values shown.
  */
 /// Computes natural log using a port from Rust's `libm`
-pub const fn ln(mut x: f64) -> f64 {
+pub const fn ln(x: f64) -> f64 {
+    #[cfg(feature = "nightly")]
+    {
+        #[cfg(feature = "std")]
+        {
+            std::intrinsics::const_eval_select((x,), ln_inner, f64::ln)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            core::intrinsics::const_eval_select((x,), ln_inner, libm::log)
+        }
+    }
+    #[cfg(not(feature = "nightly"))]
+    {
+        ln_inner(x)
+    }
+}
+
+const fn ln_inner(mut x: f64) -> f64 {
     const LN2_HI: f64 = 6.93147180369123816490e-01; /* 3fe62e42 fee00000 */
     const LN2_LO: f64 = 1.90821492927058770002e-10; /* 3dea39ef 35793c76 */
     const LG1: f64 = 6.666666666666735130e-01; /* 3FE55555 55555593 */

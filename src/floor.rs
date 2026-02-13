@@ -15,6 +15,10 @@ const EXP_BIAS: u32 = EXP_SAT >> 1;
 const SIG_MASK: u64 = 4503599627370495;
 
 pub const fn floor(x: f64) -> f64 {
+    nightly_exp!(floor, floor_inner, x)
+}
+
+const fn floor_inner(x: f64) -> f64 {
     let zero = 0;
 
     let mut ix = x.to_bits();

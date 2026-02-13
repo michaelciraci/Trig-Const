@@ -68,7 +68,11 @@ const fn comp_r(z: f64) -> f64 {
 /// const ASIN_PI: f64 = asin(0.0);
 /// assert_eq!(ASIN_PI, 0.0);
 /// ```
-pub const fn asin(mut x: f64) -> f64 {
+pub const fn asin(x: f64) -> f64 {
+    nightly_exp!(asin, asin_inner, x)
+}
+
+const fn asin_inner(mut x: f64) -> f64 {
     let hx: u32 = get_high_word(x);
     let ix: u32 = hx & 0x7fffffff;
     /* |x| >= 1 or nan */

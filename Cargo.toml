@@ -13,3 +13,9 @@ keywords = ["const", "trig", "no_std"]
 license = "MIT"
 
 [dependencies]
+libm = { version = "0.2", optional = true }
+
+[features]
+default = ["std"]
+std = []
+nightly = ["dep:libm"]

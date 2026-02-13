@@ -68,6 +68,10 @@ const AT: [f64; 11] = [
 /// assert_eq!(ATAN_1, PI / 4.0);
 /// ```
 pub const fn atan(x: f64) -> f64 {
+    nightly_exp!(atan, atan_inner, x)
+}
+
+const fn atan_inner(x: f64) -> f64 {
     let mut x = x;
     let mut ix = (x.to_bits() >> 32) as u32;
     let sign = ix >> 31;
