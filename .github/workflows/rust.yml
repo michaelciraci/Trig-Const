@@ -11,14 +11,22 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
+    - name: Install Rust toolchains
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
+    - name: Install nightly
+      uses: dtolnay/rust-toolchain@nightly
     - name: Clippy
       run: cargo clippy -- -D warnings
     - name: Build
       run: cargo build
-    - name: Run tests
+    - name: Run tests on stable
       run: cargo test
+    - name: Run tests on nightly, but with std
+      run: cargo +nightly test --features nightly
+    - name: Run tests on nightly no_std
+      run: cargo +nightly test --no-default-features --features nightly
