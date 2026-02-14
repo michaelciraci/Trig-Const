@@ -51,6 +51,10 @@ use crate::{k_cos::k_cos, k_sin::k_sin, rem_pio2::rem_pio2};
 /// assert_eq!(COS_PI, -1.0);
 /// ```
 pub const fn cos(x: f64) -> f64 {
+    nightly_exp!(cos, cos_inner, x)
+}
+
+const fn cos_inner(x: f64) -> f64 {
     let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
 
     /* |x| ~< pi/4 */

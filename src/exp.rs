@@ -81,7 +81,11 @@ const P5: f64 = 4.13813679705723846039e-08; /* 0x3E663769, 0x72BEA4D0 */
 ///
 /// Calculate the exponential of `x`, that is, *e* raised to the power `x`
 /// (where *e* is the base of the natural system of logarithms, approximately 2.71828).
-pub const fn exp(mut x: f64) -> f64 {
+pub const fn exp(x: f64) -> f64 {
+    nightly_exp!(exp, exp_inner, x)
+}
+
+const fn exp_inner(mut x: f64) -> f64 {
     let x1p1023 = f64::from_bits(0x7fe0000000000000); // 0x1p1023 === 2 ^ 1023
 
     let hi: f64;

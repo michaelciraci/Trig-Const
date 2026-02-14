@@ -12,7 +12,11 @@ const LN2: f64 = 0.693147180559945309417232121458176568; /* 0x3fe62e42,  0xfefa3
 /// const ASINH_1: f64 = asinh(0.0);
 /// assert_eq!(ASINH_1, 0.0);
 /// ```
-pub const fn asinh(mut x: f64) -> f64 {
+pub const fn asinh(x: f64) -> f64 {
+    nightly_exp!(asinh, asinh_inner, x)
+}
+
+const fn asinh_inner(mut x: f64) -> f64 {
     let mut u = x.to_bits();
     let e = ((u >> 52) as usize) & 0x7ff;
     let sign = (u >> 63) != 0;

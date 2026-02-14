@@ -1,6 +1,6 @@
 [package]
 name = "trig-const"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.85.0"
 categories = ["mathematics", "no-std"]
@@ -13,3 +13,8 @@ keywords = ["const", "trig", "no_std"]
 license = "MIT"
 
 [dependencies]
+libm = { version = "0.2", optional = true }
+
+[features]
+std = []
+nightly = ["dep:libm"]

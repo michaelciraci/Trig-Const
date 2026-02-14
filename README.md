@@ -59,6 +59,13 @@ fn main() {
 }
 ```
 
+## Features
+
+- `nightly`: Running in [nightly](https://rust-lang.github.io/rustup/concepts/channels.html) exposes the function [`const_eval_select`](https://doc.rust-lang.org/std/intrinsics/fn.const_eval_select.html). This allows the compiler to call a different function if the function is to be evaluated at compile-time or run-time
+  - Any `const` function calls will use this library
+  - Any runtime function calls will forward to `libm`.
+- `std`: This feature can be used in conjunction with `nightly`. This will forward runtime function calls to `std` instead of `libm`, to take advantage of hardware intrinsics (SIMD/FPU)
+
 ## Precision
 
 Precision will be different platform to platform. There is a precision comparison within examples, under `examples/std_cmp.rs` (to run: `cargo run --release --example std_cmp`).

@@ -96,6 +96,24 @@ const IVLN2_L: f64 = 1.92596299112661746887e-08; /* 0x3e54ae0b_f85ddf44 =1/ln2 t
 /// assert_eq!(pow(10.0, 2.0), 100.0);
 /// ```
 pub const fn pow(x: f64, y: f64) -> f64 {
+    #[cfg(feature = "nightly")]
+    {
+        #[cfg(feature = "std")]
+        {
+            std::intrinsics::const_eval_select((x, y), pow_inner, f64::powf)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            core::intrinsics::const_eval_select((x, y), pow_inner, libm::pow)
+        }
+    }
+    #[cfg(not(feature = "nightly"))]
+    {
+        pow_inner(x, y)
+    }
+}
+
+const fn pow_inner(x: f64, y: f64) -> f64 {
     let t1: f64;
     let t2: f64;
 

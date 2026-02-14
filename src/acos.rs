@@ -57,6 +57,10 @@ const QS4: f64 = 7.70381505559019352791e-02; /* 0x3FB3B8C5, 0xB12E9282 */
 /// assert_eq!(ACOS_1, 0.0);
 /// ```
 pub const fn acos(x: f64) -> f64 {
+    nightly_exp!(acos, acos_inner, x)
+}
+
+const fn acos_inner(x: f64) -> f64 {
     let x1p_120f = f64::from_bits(0x3870000000000000); // 0x1p-120 === 2 ^ -120
     let z: f64;
     let w: f64;

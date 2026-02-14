@@ -16,6 +16,10 @@ const LN2: f64 = 0.693147180559945309417232121458176568; /* 0x3fe62e42,  0xfefa3
 /// assert_eq!(ACOSH_1, 0.0);
 /// ```
 pub const fn acosh(x: f64) -> f64 {
+    nightly_exp!(acosh, acosh_inner, x)
+}
+
+const fn acosh_inner(x: f64) -> f64 {
     let u = x.to_bits();
     let e = ((u >> 52) as usize) & 0x7ff;
 

@@ -49,6 +49,10 @@ use crate::{atan, fabs};
 /// assert_eq!(ATAN2_0_1, 0.0);
 /// ```
 pub const fn atan2(y: f64, x: f64) -> f64 {
+    nightly_exp!(atan2, atan2_inner, y, x)
+}
+
+const fn atan2_inner(y: f64, x: f64) -> f64 {
     const PI_LO: f64 = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
     if x.is_nan() || y.is_nan() {
         return x + y;

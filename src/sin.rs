@@ -51,6 +51,10 @@ use crate::{k_cos::k_cos, k_sin::k_sin, rem_pio2::rem_pio2};
 /// float_eq(SIN_PI, 0.0);
 /// ```
 pub const fn sin(x: f64) -> f64 {
+    nightly_exp!(sin, sin_inner, x)
+}
+
+const fn sin_inner(x: f64) -> f64 {
     /* High word of x. */
     let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
 
