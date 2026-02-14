@@ -26,7 +26,7 @@ jobs:
       run: cargo +stable build
     - name: Run tests on stable
       run: cargo +stable test
-    - name: Run tests on nightly, but with std
-      run: cargo +nightly test --features nightly
     - name: Run tests on nightly no_std
-      run: cargo +nightly test --no-default-features --features nightly
+      run: cargo +nightly test --features nightly
+    - name: Run tests on nightly with std
+      run: cargo +nightly test --features nightly,std
