@@ -115,7 +115,6 @@ pub const fn pow(x: f64, y: f64) -> f64 {
 
 const fn pow_inner(x: f64, y: f64) -> f64 {
     let t1: f64;
-    let t2: f64;
 
     let (hx, lx): (i32, u32) = ((x.to_bits() >> 32) as i32, x.to_bits() as u32);
     let (hy, ly): (i32, u32) = ((y.to_bits() >> 32) as i32, y.to_bits() as u32);
@@ -254,7 +253,7 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
     }
 
     /* |y| is HUGE */
-    if iy > 0x41e00000 {
+    let t2: f64 = if iy > 0x41e00000 {
         /* if |y| > 2**31 */
         if iy > 0x43f00000 {
             /* if |y| > 2**64, must o/uflow */
@@ -290,7 +289,7 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
         let u: f64 = IVLN2_H * t; /* ivln2_h has 21 sig. bits */
         let v: f64 = t * IVLN2_L - w * IVLN2;
         t1 = with_set_low_word(u + v, 0);
-        t2 = v - (t1 - u);
+        v - (t1 - u)
     } else {
         // double ss,s2,s_h,s_l,t_h,t_l;
         let mut n: i32 = 0;
@@ -356,8 +355,8 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
         /* log2(ax) = (ss+..)*2/(3*log2) = n + dp_h + z_h + z_l */
         let t: f64 = n as f64;
         t1 = with_set_low_word(((z_h + z_l) + DP_H[k as usize]) + t, 0);
-        t2 = z_l - (((t1 - t) - DP_H[k as usize]) - z_h);
-    }
+        z_l - (((t1 - t) - DP_H[k as usize]) - z_h)
+    };
 
     /* split up y into y1+y2 and compute (y1+y2)*(t1+t2) */
     let y1: f64 = with_set_low_word(y, 0);

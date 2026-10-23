@@ -18,8 +18,11 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy
+        targets: thumbv7em-none-eabi
     - name: Install nightly
       uses: dtolnay/rust-toolchain@nightly
+    - name: Check no_std on a bare-metal target
+      run: cargo +stable check --lib --no-default-features --target thumbv7em-none-eabi
     - name: Clippy
       run: cargo +stable clippy -- -D warnings
     - name: Build
