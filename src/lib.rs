@@ -18,6 +18,7 @@ mod atan2;
 mod atanh;
 mod cos;
 mod exp;
+mod expm1;
 mod floor;
 mod k_cos;
 mod k_sin;
@@ -109,7 +110,28 @@ pub const fn sinh(x: f64) -> f64 {
 }
 
 const fn sinh_inner(x: f64) -> f64 {
-    (exp(x) - exp(-x)) / 2.0
+    let magnitude = x.abs();
+    let result = if magnitude < 709.782712893384 {
+        // expm1 retains the low bits that exp(x) - 1 loses near zero.
+        if magnitude < 1.4901161193847656e-8 {
+            return x;
+        }
+        let t = expm1::expm1(magnitude);
+        if magnitude < 1.0 {
+            0.5 * (2.0 * t - t * t / (t + 1.0))
+        } else {
+            0.5 * (t + t / (t + 1.0))
+        }
+    } else {
+        // Scale before multiplication so exp(x) need not fit in an f64.
+        let t = exp(0.5 * magnitude);
+        (0.5 * t) * t
+    };
+    if x.is_sign_negative() {
+        -result
+    } else {
+        result
+    }
 }
 
 /// Hyperbolic Cosine
@@ -294,12 +316,15 @@ mod tests {
         const MIN_SUBNORMAL: f64 = f64::from_bits(1);
         const MAX_SUBNORMAL: f64 = f64::from_bits(0x000f_ffff_ffff_ffff);
 
-        assert_eq!(const { sqrt(1e-20) }, 1e-10);
-        assert_eq!(const { sqrt(1e20) }, 1e10);
-        assert_eq!(const { sqrt(MIN_SUBNORMAL) }, MIN_SUBNORMAL.sqrt());
-        assert_eq!(const { sqrt(MAX_SUBNORMAL) }, MAX_SUBNORMAL.sqrt());
-        assert_eq!(const { sqrt(f64::MIN_POSITIVE) }, f64::MIN_POSITIVE.sqrt());
-        assert_eq!(const { sqrt(f64::MAX) }, f64::MAX.sqrt());
+        assert_eq!((const { sqrt(1e-20) }), 1e-10);
+        assert_eq!((const { sqrt(1e20) }), 1e10);
+        assert_eq!((const { sqrt(MIN_SUBNORMAL) }), MIN_SUBNORMAL.sqrt());
+        assert_eq!((const { sqrt(MAX_SUBNORMAL) }), MAX_SUBNORMAL.sqrt());
+        assert_eq!(
+            (const { sqrt(f64::MIN_POSITIVE) }),
+            f64::MIN_POSITIVE.sqrt()
+        );
+        assert_eq!((const { sqrt(f64::MAX) }), f64::MAX.sqrt());
     }
 
     #[test]
@@ -358,6 +383,26 @@ mod tests {
         for x in [0.0, 0.5, 1.0, 1.5, 2.0, 2.5] {
             float_eq!(sinh(x), x.sinh());
         }
+    }
+
+    #[test]
+    fn test_sinh_near_zero_const() {
+        assert_eq!((const { sinh(1e-20) }), 1e-20);
+        assert_eq!((const { sinh(-1e-20) }), -1e-20);
+        assert_eq!((const { sinh(f64::from_bits(1)) }), f64::from_bits(1));
+        assert_eq!((const { sinh(-0.0) }).to_bits(), (-0.0_f64).to_bits());
+        assert_eq!((const { sinh(1e-6) }), 1.0000000000001666e-6);
+        assert_eq!((const { sinh(-1e-6) }), -1.0000000000001666e-6);
+    }
+
+    #[test]
+    fn test_sinh_large_and_special_values() {
+        assert!((const { sinh(710.0) } / 710.0_f64.sinh() - 1.0).abs() <= f64::EPSILON);
+        assert!((const { sinh(-710.0) } / (-710.0_f64).sinh() - 1.0).abs() <= f64::EPSILON);
+        assert_eq!((const { sinh(711.0) }), f64::INFINITY);
+        assert_eq!((const { sinh(f64::INFINITY) }), f64::INFINITY);
+        assert_eq!((const { sinh(f64::NEG_INFINITY) }), f64::NEG_INFINITY);
+        assert!(const { sinh(f64::NAN) }.is_nan());
     }
 
     #[test]

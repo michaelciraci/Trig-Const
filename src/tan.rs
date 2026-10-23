@@ -71,3 +71,18 @@ const fn tan_inner(x: f64) -> f64 {
     let (n, y0, y1) = rem_pio2(x);
     k_tan(y0, y1, n & 1)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::tan;
+
+    #[test]
+    fn precision_at_sweep_outliers() {
+        // Rounded references computed with 100-digit sine/cosine Taylor series.
+        // The platform's std::tan can differ by multiple ULP at these inputs.
+        assert_eq!((const { tan(-10.9955742230756) }), -15506598.359940352);
+        assert!(
+            (const { tan(-23.831908227381145) } - 3.613778798224926).abs() <= 4.440892098500626e-16
+        );
+    }
+}
