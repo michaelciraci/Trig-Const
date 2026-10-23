@@ -45,9 +45,6 @@ pub use pow::pow;
 pub use sin::sin;
 pub use tan::tan;
 
-/// Number of sum iterations for Taylor series
-const TAYLOR_SERIES_SUMS: usize = 16;
-
 /// Cotangent
 ///
 /// ```
@@ -160,7 +157,9 @@ pub const fn factorial(mut x: f64) -> f64 {
     }
 }
 
-/// Const sqrt function using Newton's method
+/// Square root, rounded to the nearest representable value.
+///
+/// Preserves signed zero and positive infinity. Negative inputs return NaN.
 pub const fn sqrt(x: f64) -> f64 {
     nightly_exp!(sqrt, sqrt_inner, x)
 }
@@ -172,16 +171,52 @@ const fn sqrt_inner(x: f64) -> f64 {
         return x;
     }
 
-    // Use Newton's method for sqrt calculation
-    let mut current_guess = 1.0;
-
-    let mut i = 0;
-    while i < TAYLOR_SERIES_SUMS {
-        current_guess = 0.5 * (current_guess + x / current_guess);
-        i += 1;
+    // Normalize x = significand * 2^(exponent - 52), including subnormals.
+    let bits = x.to_bits();
+    let mut significand = bits & 0x000f_ffff_ffff_ffff;
+    let mut exponent = ((bits >> 52) as i32) - 1023;
+    if exponent == -1023 {
+        let shift = significand.leading_zeros() - 11;
+        significand <<= shift;
+        exponent = -1022 - shift as i32;
+    } else {
+        significand |= 1_u64 << 52;
     }
 
-    current_guess
+    // Make the exponent even so its square root is an exact power of two.
+    if exponent & 1 != 0 {
+        significand <<= 1;
+        exponent -= 1;
+    }
+    let radicand = (significand as u128) << 52;
+
+    // Integer square root by long division, consuming two bits per step.
+    // After 53 steps, root = floor(sqrt(radicand)) and
+    // remainder = radicand - root^2. All arithmetic here is exact.
+    let mut root = 0_u64;
+    let mut remainder = 0_u64;
+    let mut pairs = 53;
+    while pairs > 0 {
+        pairs -= 1;
+        remainder = (remainder << 2) | ((radicand >> (pairs * 2)) & 3) as u64;
+        root <<= 1;
+        let trial = (root << 1) | 1;
+        if remainder >= trial {
+            remainder -= trial;
+            root += 1;
+        }
+    }
+
+    // Round up precisely when sqrt(radicand) > root + 1/2.
+    // A tie would require the integer radicand to equal root^2 + root + 1/4.
+    if remainder > root {
+        root += 1;
+    }
+
+    // Every nonzero f64 square root is normal. Addition also handles a rounded
+    // significand carrying into the next exponent.
+    let result_exponent = (exponent / 2 + 1023) as u64;
+    f64::from_bits((result_exponent << 52) + (root - (1_u64 << 52)))
 }
 
 pub const fn fabs(x: f64) -> f64 {
@@ -252,6 +287,54 @@ mod tests {
         float_eq!(sqrt(9.0), 3.0);
         float_eq!(sqrt(16.0), 4.0);
         float_eq!(sqrt(25.0), 5.0);
+    }
+
+    #[test]
+    fn test_sqrt_extreme_magnitudes_const() {
+        const MIN_SUBNORMAL: f64 = f64::from_bits(1);
+        const MAX_SUBNORMAL: f64 = f64::from_bits(0x000f_ffff_ffff_ffff);
+
+        assert_eq!(const { sqrt(1e-20) }, 1e-10);
+        assert_eq!(const { sqrt(1e20) }, 1e10);
+        assert_eq!(const { sqrt(MIN_SUBNORMAL) }, MIN_SUBNORMAL.sqrt());
+        assert_eq!(const { sqrt(MAX_SUBNORMAL) }, MAX_SUBNORMAL.sqrt());
+        assert_eq!(const { sqrt(f64::MIN_POSITIVE) }, f64::MIN_POSITIVE.sqrt());
+        assert_eq!(const { sqrt(f64::MAX) }, f64::MAX.sqrt());
+    }
+
+    #[test]
+    fn test_sqrt_exponents_and_rounding() {
+        // Exercise every normal exponent and significands near rounding boundaries.
+        for exponent in 1..0x7ff_u64 {
+            for fraction in [0, 1, 0x0007_ffff_ffff_ffff, 0x000f_ffff_ffff_ffff] {
+                let x = f64::from_bits((exponent << 52) | fraction);
+                // Check the const implementation even when nightly forwards runtime calls.
+                assert_eq!(super::sqrt_inner(x).to_bits(), x.sqrt().to_bits());
+            }
+        }
+    }
+
+    #[test]
+    fn test_sqrt_special_values() {
+        assert_eq!(super::sqrt_inner(0.0).to_bits(), 0.0_f64.to_bits());
+        assert_eq!(super::sqrt_inner(-0.0).to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(super::sqrt_inner(f64::INFINITY), f64::INFINITY);
+        assert!(super::sqrt_inner(-1.0).is_nan());
+        assert!(super::sqrt_inner(f64::NEG_INFINITY).is_nan());
+        assert!(super::sqrt_inner(f64::NAN).is_nan());
+    }
+
+    #[test]
+    fn test_sqrt_sampled_significands() {
+        // Fixed seed keeps this coverage deterministic, including subnormal inputs.
+        let mut bits = 0x1234_5678_9abc_def0_u64;
+        for _ in 0..10_000 {
+            bits = bits.wrapping_mul(6364136223846793005).wrapping_add(1);
+            for sample in [bits & 0x7fef_ffff_ffff_ffff, bits & 0x000f_ffff_ffff_ffff] {
+                let x = f64::from_bits(sample);
+                assert_eq!(super::sqrt_inner(x).to_bits(), x.sqrt().to_bits());
+            }
+        }
     }
 
     #[test]
