@@ -68,9 +68,24 @@ fn main() {
 
 ## Precision
 
-Precision will be different platform to platform. There is a precision comparison within examples, under `examples/std_cmp.rs` (to run: `cargo run --release --example std_cmp`).
+Sine and cosine use integer fixed-point intervals for both angle reduction and
+evaluation. A division-free 128-bit first pass handles ordinary inputs; ambiguous
+cases are recomputed at 256 or 512 bits. Matching interval endpoints settle the
+rounding; an unresolved 512-bit calculation returns its best estimate. This prioritizes
+accuracy over execution and compilation speed. See [the math and validation
+notes](docs/trigonometry.md) for the algorithm, precision limits, and MPFR checks.
+The `nightly` runtime forwarding described above still applies.
 
-On aarch64, I get:
+All trigonometric constants are computed by Rust `const fn` expressions.
+Building and testing require only Rust; regression values and generated-input
+tests are self-contained in the Rust source, with no external test-data files.
+
+Other functions and `nightly` runtime results may have different precision across
+platforms. There is a precision comparison in `examples/std_cmp.rs` (to run:
+`cargo run --release --example std_cmp`).
+
+This comparison measures agreement with `std`, which is not a correctly rounded
+reference for sine/cosine. On aarch64, the comparison produces:
 
 Func   | Total Tests| Diff Count|       Max Diff
 -------|------------|-----------|---------------
@@ -80,13 +95,13 @@ asin   |     2000000|     173593|    2.22045e-16
 asinh  |    99000001|    2721621|    8.88178e-16
 atan   |    50265483|    3290826|    2.22045e-16
 atanh  |     1999998|     771064|    3.34115e-11
-cos    |    50265483|    2173339|    1.11022e-16
+cos    |    50265483|    2009122|    1.11022e-16
 cosh   |    25132742|    6498663|    2.91038e-11
 ln     |    99999001|    3413955|    8.88178e-16
 exp    |    20000001|    1944323|    3.63798e-12
 fabs   |    20000001|          0|      0.00000e0
 floor  |    20000001|          0|      0.00000e0
-sin    |    50265483|    2255609|    1.11022e-16
+sin    |    50265483|    2068762|    1.11022e-16
 sinh   |    25132742|    6593602|    2.91038e-11
 sqrt   |    10000001|          0|      0.00000e0
 tan    |    50265483|   20777207|     3.72529e-9
