@@ -50,16 +50,18 @@ use crate::{k_cos::k_cos, k_sin::k_sin, rem_pio2::rem_pio2};
 /// const COS_PI: f64 = cos(PI);
 /// assert_eq!(COS_PI, -1.0);
 /// ```
+#[must_use]
 pub const fn cos(x: f64) -> f64 {
     nightly_exp!(cos, cos_inner, x)
 }
 
 const fn cos_inner(x: f64) -> f64 {
-    let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
+    const SMALL_ANGLE: f64 = core::f64::consts::SQRT_2 * crate::expi(2.0, -27);
+    let ix = crate::get_high_word(x.abs());
 
     /* |x| ~< pi/4 */
-    if ix <= 0x3fe921fb {
-        if ix < 0x3e46a09e {
+    if ix <= crate::get_high_word(core::f64::consts::FRAC_PI_4) {
+        if ix < crate::get_high_word(SMALL_ANGLE) {
             /* if x < 2**-27 * sqrt(2) */
             /* raise inexact if x != 0 */
             if x as i32 == 0 {
@@ -70,7 +72,7 @@ const fn cos_inner(x: f64) -> f64 {
     }
 
     /* cos(Inf or NaN) is NaN */
-    if ix >= 0x7ff00000 {
+    if ix >= crate::get_high_word(f64::INFINITY) {
         return f64::NAN;
     }
 

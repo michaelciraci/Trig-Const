@@ -222,8 +222,8 @@ const PIO2: [f64; 8] = [
 /// more accurately, = 0 mod 8 ). Thus the number of operations are
 /// independent of the exponent of the input.
 pub(crate) const fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
-    let x1p24 = f64::from_bits(0x4170000000000000); // 0x1p24 === 2 ^ 24
-    let x1p_24 = f64::from_bits(0x3e70000000000000); // 0x1p_24 === 2 ^ (-24)
+    const TWO_POW_24: f64 = crate::expi(2.0, 24);
+    const TWO_POW_NEG_24: f64 = crate::expi(2.0, -24);
 
     if cfg!(target_pointer_width = "64") {
         debug_assert!(e0 <= 16360);
@@ -285,8 +285,8 @@ pub(crate) const fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usiz
         z = q[jz];
         let mut j = jz;
         while j >= 1 {
-            fw = (x1p_24 * z) as i32 as f64;
-            iq[i as usize] = (z - x1p24 * fw) as i32;
+            fw = (TWO_POW_NEG_24 * z) as i32 as f64;
+            iq[i as usize] = (z - TWO_POW_24 * fw) as i32;
             z = q[j - 1] + fw;
             i += 1;
             j -= 1;
@@ -395,9 +395,9 @@ pub(crate) const fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usiz
     } else {
         /* break z into 24-bit if necessary */
         z = scalbn(z, -q0);
-        if z >= x1p24 {
-            fw = (x1p_24 * z) as i32 as f64;
-            iq[jz] = (z - x1p24 * fw) as i32;
+        if z >= TWO_POW_24 {
+            fw = (TWO_POW_NEG_24 * z) as i32 as f64;
+            iq[jz] = (z - TWO_POW_24 * fw) as i32;
             jz += 1;
             q0 += 24;
             iq[jz] = fw as i32;
@@ -411,7 +411,7 @@ pub(crate) const fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usiz
     let mut i = jz;
     loop {
         q[i] = fw * (iq[i] as f64);
-        fw *= x1p_24;
+        fw *= TWO_POW_NEG_24;
         if i == 0 {
             break;
         }

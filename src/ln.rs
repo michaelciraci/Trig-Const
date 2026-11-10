@@ -60,6 +60,7 @@
  * to produce the hexadecimal values shown.
  */
 /// Computes natural log using a port from Rust's `libm`
+#[must_use]
 pub const fn ln(x: f64) -> f64 {
     #[cfg(feature = "nightly")]
     {
@@ -79,8 +80,12 @@ pub const fn ln(x: f64) -> f64 {
 }
 
 const fn ln_inner(mut x: f64) -> f64 {
-    const LN2_HI: f64 = 6.93147180369123816490e-01; /* 3fe62e42 fee00000 */
-    const LN2_LO: f64 = 1.90821492927058770002e-10; /* 3dea39ef 35793c76 */
+    // Split ln(2) so k*LN2_HI is exact; LN2_LO supplies the remainder.
+    const LN2_HI: f64 = crate::log_constants::LN_TWO_TRUNCATED.hi;
+    const LN2_LO: f64 = crate::log_constants::LN_TWO_TRUNCATED.lo;
+
+    // Fitted correction: log((1+s)/(1-s)) ~ 2*s + s*R(s).
+    // R(s) = LG1*s^2 + ... + LG7*s^14.
     const LG1: f64 = 6.666666666666735130e-01; /* 3FE55555 55555593 */
     const LG2: f64 = 3.999999999940941908e-01; /* 3FD99999 9997FA04 */
     const LG3: f64 = 2.857142874366239149e-01; /* 3FD24924 94229359 */
@@ -88,7 +93,9 @@ const fn ln_inner(mut x: f64) -> f64 {
     const LG5: f64 = 1.818357216161805012e-01; /* 3FC74664 96CB03DE */
     const LG6: f64 = 1.531383769920937332e-01; /* 3FC39A09 D078C69F */
     const LG7: f64 = 1.479819860511658591e-01; /* 3FC2F112 DF3E5244 */
-    let x1p54 = f64::from_bits(0x4350000000000000); // 0x1p54 === 2 ^ 54
+
+    // Scale subnormal inputs into the normal range.
+    const TWO_POW_54: f64 = crate::expi(2.0, 54);
 
     let mut ui = x.to_bits();
     let mut hx: u32 = (ui >> 32) as u32;
@@ -104,7 +111,7 @@ const fn ln_inner(mut x: f64) -> f64 {
         }
         /* subnormal number, scale x up */
         k -= 54;
-        x *= x1p54;
+        x *= TWO_POW_54;
         ui = x.to_bits();
         hx = (ui >> 32) as u32;
     } else if hx >= 0x7ff00000 {

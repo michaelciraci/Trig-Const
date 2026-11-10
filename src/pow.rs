@@ -9,84 +9,63 @@
  * ====================================================
  */
 
-// pow(x,y) return x**y
-//
-//                    n
-// Method:  Let x =  2   * (1+f)
-//      1. Compute and return log2(x) in two pieces:
-//              log2(x) = w1 + w2,
-//         where w1 has 53-24 = 29 bit trailing zeros.
-//      2. Perform y*log2(x) = n+y' by simulating multi-precision
-//         arithmetic, where |y'|<=0.5.
-//      3. Return x**y = 2**n*exp(y'*log2)
-//
-// Special cases:
-//      1.  (anything) ** 0  is 1
-//      2.  1 ** (anything)  is 1
-//      3.  (anything except 1) ** NAN is NAN
-//      4.  NAN ** (anything except 0) is NAN
-//      5.  +-(|x| > 1) **  +INF is +INF
-//      6.  +-(|x| > 1) **  -INF is +0
-//      7.  +-(|x| < 1) **  +INF is +0
-//      8.  +-(|x| < 1) **  -INF is +INF
-//      9.  -1          ** +-INF is 1
-//      10. +0 ** (+anything except 0, NAN)               is +0
-//      11. -0 ** (+anything except 0, NAN, odd integer)  is +0
-//      12. +0 ** (-anything except 0, NAN)               is +INF, raise divbyzero
-//      13. -0 ** (-anything except 0, NAN, odd integer)  is +INF, raise divbyzero
-//      14. -0 ** (+odd integer) is -0
-//      15. -0 ** (-odd integer) is -INF, raise divbyzero
-//      16. +INF ** (+anything except 0,NAN) is +INF
-//      17. +INF ** (-anything except 0,NAN) is +0
-//      18. -INF ** (+odd integer) is -INF
-//      19. -INF ** (anything) = -0 ** (-anything), (anything except odd integer)
-//      20. (anything) ** 1 is (anything)
-//      21. (anything) ** -1 is 1/(anything)
-//      22. (-anything) ** (integer) is (-1)**(integer)*(+anything**integer)
-//      23. (-anything except 0 and inf) ** (non-integer) is NAN
-//
-// Accuracy:
-//      pow(x,y) returns x**y nearly rounded. In particular
-//                      pow(integer,integer)
-//      always returns the correct integer provided it is
-//      representable.
-//
-// Constants :
-// The hexadecimal values are the intended ones for the following
-// constants. The decimal values may be used, provided that the
-// compiler will convert from decimal to binary accurately enough
-// to produce the hexadecimal values shown.
-//
-use crate::{fabs, get_high_word, scalbn::scalbn, sqrt, with_set_high_word, with_set_low_word};
+// |x|^y = 2^(y*log2(|x|)). High/low parts retain precision during reduction.
+// Handle exceptional values and integer exponents before evaluating the approximation.
 
-const BP: [f64; 2] = [1.0, 1.5];
-const DP_H: [f64; 2] = [0.0, 5.84962487220764160156e-01]; /* 0x3fe2b803_40000000 */
-const DP_L: [f64; 2] = [0.0, 1.35003920212974897128e-08]; /* 0x3E4CFDEB, 0x43CFD006 */
-const TWO53: f64 = 9007199254740992.0; /* 0x43400000_00000000 */
-const HUGE: f64 = 1.0e300;
-const TINY: f64 = 1.0e-300;
-// poly coefs for (3/2)*(log(x)-2s-2/3*s**3:
-const L1: f64 = 5.99999999999994648725e-01; /* 0x3fe33333_33333303 */
-const L2: f64 = 4.28571428578550184252e-01; /* 0x3fdb6db6_db6fabff */
-const L3: f64 = 3.33333329818377432918e-01; /* 0x3fd55555_518f264d */
-const L4: f64 = 2.72728123808534006489e-01; /* 0x3fd17460_a91d4101 */
-const L5: f64 = 2.30660745775561754067e-01; /* 0x3fcd864a_93c9db65 */
-const L6: f64 = 2.06975017800338417784e-01; /* 0x3fca7e28_4a454eef */
-const P1: f64 = 1.66666666666666019037e-01; /* 0x3fc55555_5555553e */
-const P2: f64 = -2.77777777770155933842e-03; /* 0xbf66c16c_16bebd93 */
-const P3: f64 = 6.61375632143793436117e-05; /* 0x3f11566a_af25de2c */
-const P4: f64 = -1.65339022054652515390e-06; /* 0xbebbbd41_c5d26bf1 */
-const P5: f64 = 4.13813679705723846039e-08; /* 0x3e663769_72bea4d0 */
-const LG2: f64 = 6.93147180559945286227e-01; /* 0x3fe62e42_fefa39ef */
-const LG2_H: f64 = 6.93147182464599609375e-01; /* 0x3fe62e43_00000000 */
-const LG2_L: f64 = -1.90465429995776804525e-09; /* 0xbe205c61_0ca86c39 */
-const OVT: f64 = 8.0085662595372944372e-017; /* -(1024-log2(ovfl+.5ulp)) */
-const CP: f64 = 9.61796693925975554329e-01; /* 0x3feec709_dc3a03fd =2/(3ln2) */
-const CP_H: f64 = 9.61796700954437255859e-01; /* 0x3feec709_e0000000 =(float)cp */
-const CP_L: f64 = -7.02846165095275826516e-09; /* 0xbe3e2fe0_145b01f5 =tail of cp_h*/
-const IVLN2: f64 = 1.44269504088896338700e+00; /* 0x3ff71547_652b82fe =1/ln2 */
-const IVLN2_H: f64 = 1.44269502162933349609e+00; /* 0x3ff71547_60000000 =24b 1/ln2*/
-const IVLN2_L: f64 = 1.92596299112661746887e-08; /* 0x3e54ae0b_f85ddf44 =1/ln2 tail*/
+use core::f64::consts::{LN_2, LOG2_E};
+
+use crate::{
+    exp::exp_correction, fabs, get_high_word, get_low_word, log_constants, scalbn::scalbn, sqrt,
+    with_set_high_word, with_set_low_word,
+};
+
+const LOG_BASES: [f64; 2] = [1.0, 3.0 / 2.0];
+const LOG2_BASE_HI: [f64; 2] = [0.0, log_constants::LOG2_THREE_HALVES.hi];
+const LOG2_BASE_LO: [f64; 2] = [0.0, log_constants::LOG2_THREE_HALVES.lo];
+const SUBNORMAL_SCALE: f64 = crate::expi(2.0, f64::MANTISSA_DIGITS as isize);
+const OVERFLOW_FACTOR: f64 = f64::MAX;
+const UNDERFLOW_FACTOR: f64 = f64::MIN_POSITIVE;
+
+// Fitted coefficients for the logarithm correction.
+const LOG_L1: f64 = 5.99999999999994648725e-01;
+const LOG_L2: f64 = 4.28571428578550184252e-01;
+const LOG_L3: f64 = 3.33333329818377432918e-01;
+const LOG_L4: f64 = 2.72728123808534006489e-01;
+const LOG_L5: f64 = 2.30660745775561754067e-01;
+const LOG_L6: f64 = 2.06975017800338417784e-01;
+
+const LN_2_HI: f64 = log_constants::LN_TWO.hi;
+const LN_2_LO: f64 = log_constants::LN_TWO.lo;
+const LOG_SCALE: f64 = 2.0 * LOG2_E / 3.0;
+const LOG_SCALE_HI: f64 = log_constants::LOG_SCALE.hi;
+const LOG_SCALE_LO: f64 = log_constants::LOG_SCALE.lo;
+const LOG2_E_HI: f64 = log_constants::LOG2_E.hi;
+const LOG2_E_LO: f64 = log_constants::LOG2_E.lo;
+// Correction at the overflow rounding boundary.
+const OVERFLOW_CORRECTION: f64 = LOG2_E * crate::expi(2.0, -(f64::MANTISSA_DIGITS as isize + 1));
+
+// IEEE-754 fields in the high 32-bit word.
+const FRACTION_BITS: i32 = f64::MANTISSA_DIGITS as i32 - 1;
+const HIGH_FRACTION_BITS: i32 = FRACTION_BITS - u32::BITS as i32;
+const EXPONENT_BIAS: i32 = f64::MAX_EXP - 1;
+const EXPONENT_UNIT: i32 = 1 << HIGH_FRACTION_BITS;
+const HIGH_FRACTION_MASK: i32 = EXPONENT_UNIT - 1;
+const ABS_HIGH_MASK: i32 = i32::MAX;
+const HALF_EXPONENT_BIAS_WORD: u32 = (((EXPONENT_BIAS + 1) / 2) as u32) << HIGH_FRACTION_BITS;
+const HALF_EXPONENT_UNIT_WORD: u32 = (EXPONENT_UNIT as u32) >> 1;
+const ONE_HIGH_WORD: i32 = get_high_word(1.0) as i32;
+const TWO_HIGH_WORD: i32 = get_high_word(2.0) as i32;
+const HALF_HIGH_WORD: i32 = get_high_word(0.5) as i32;
+const INFINITY_HIGH_WORD: i32 = get_high_word(f64::INFINITY) as i32;
+const MIN_NORMAL_HIGH_WORD: i32 = get_high_word(f64::MIN_POSITIVE) as i32;
+const EVEN_INTEGER_HIGH_WORD: i32 = get_high_word(SUBNORMAL_SCALE) as i32;
+const LARGE_POWER_HIGH_WORD: i32 = get_high_word(crate::expi(2.0, (i32::BITS - 1) as isize)) as i32;
+const HUGE_POWER_HIGH_WORD: i32 = get_high_word(crate::expi(2.0, u64::BITS as isize)) as i32;
+const SQRT_THREE_HALVES_FRACTION: i32 = get_high_word(sqrt(3.0 / 2.0)) as i32 & HIGH_FRACTION_MASK;
+const SQRT_THREE_FRACTION: i32 = get_high_word(sqrt(3.0)) as i32 & HIGH_FRACTION_MASK;
+const EXP2_OVERFLOW_HIGH_WORD: i32 = get_high_word(f64::MAX_EXP as f64) as i32;
+const ZERO_ROUNDING_EXPONENT: i32 = f64::MIN_EXP - f64::MANTISSA_DIGITS as i32 - 1;
+const EXP2_ZERO_HIGH_WORD: i32 = get_high_word(ZERO_ROUNDING_EXPONENT as f64) as i32;
 
 /// Power function
 ///
@@ -95,6 +74,7 @@ const IVLN2_L: f64 = 1.92596299112661746887e-08; /* 0x3e54ae0b_f85ddf44 =1/ln2 t
 /// let _a = pow(10.0, 2.5);
 /// assert_eq!(pow(10.0, 2.0), 100.0);
 /// ```
+#[must_use]
 pub const fn pow(x: f64, y: f64) -> f64 {
     #[cfg(feature = "nightly")]
     {
@@ -116,11 +96,11 @@ pub const fn pow(x: f64, y: f64) -> f64 {
 const fn pow_inner(x: f64, y: f64) -> f64 {
     let t1: f64;
 
-    let (hx, lx): (i32, u32) = ((x.to_bits() >> 32) as i32, x.to_bits() as u32);
-    let (hy, ly): (i32, u32) = ((y.to_bits() >> 32) as i32, y.to_bits() as u32);
+    let (hx, lx): (i32, u32) = (get_high_word(x) as i32, get_low_word(x));
+    let (hy, ly): (i32, u32) = (get_high_word(y) as i32, get_low_word(y));
 
-    let mut ix: i32 = hx & 0x7fffffff_i32;
-    let iy: i32 = hy & 0x7fffffff_i32;
+    let mut ix: i32 = hx & ABS_HIGH_MASK;
+    let iy: i32 = hy & ABS_HIGH_MASK;
 
     /* x**0 = 1, even if x is NaN */
     if ((iy as u32) | ly) == 0 {
@@ -128,15 +108,15 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
     }
 
     /* 1**y = 1, even if y is NaN */
-    if hx == 0x3ff00000 && lx == 0 {
+    if hx == ONE_HIGH_WORD && lx == 0 {
         return 1.0;
     }
 
     /* NaN if either arg is NaN */
-    if ix > 0x7ff00000
-        || (ix == 0x7ff00000 && lx != 0)
-        || iy > 0x7ff00000
-        || (iy == 0x7ff00000 && ly != 0)
+    if ix > INFINITY_HIGH_WORD
+        || (ix == INFINITY_HIGH_WORD && lx != 0)
+        || iy > INFINITY_HIGH_WORD
+        || (iy == INFINITY_HIGH_WORD && ly != 0)
     {
         return x + y;
     }
@@ -150,21 +130,21 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
     let mut k: i32;
     let mut j: i32;
     if hx < 0 {
-        if iy >= 0x43400000 {
+        if iy >= EVEN_INTEGER_HIGH_WORD {
             yisint = 2; /* even integer y */
-        } else if iy >= 0x3ff00000 {
-            k = (iy >> 20) - 0x3ff; /* exponent */
+        } else if iy >= ONE_HIGH_WORD {
+            k = (iy >> HIGH_FRACTION_BITS) - EXPONENT_BIAS; /* exponent */
 
-            if k > 20 {
-                j = (ly >> (52 - k)) as i32;
+            if k > HIGH_FRACTION_BITS {
+                j = (ly >> (FRACTION_BITS - k)) as i32;
 
-                if (j << (52 - k)) == (ly as i32) {
+                if (j << (FRACTION_BITS - k)) == (ly as i32) {
                     yisint = 2 - (j & 1);
                 }
             } else if ly == 0 {
-                j = iy >> (20 - k);
+                j = iy >> (HIGH_FRACTION_BITS - k);
 
-                if (j << (20 - k)) == iy {
+                if (j << (HIGH_FRACTION_BITS - k)) == iy {
                     yisint = 2 - (j & 1);
                 }
             }
@@ -173,13 +153,13 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
 
     if ly == 0 {
         /* special value of y */
-        if iy == 0x7ff00000 {
+        if iy == INFINITY_HIGH_WORD {
             /* y is +-inf */
 
-            return if ((ix - 0x3ff00000) | (lx as i32)) == 0 {
+            return if ((ix - ONE_HIGH_WORD) | (lx as i32)) == 0 {
                 /* (-1)**+-inf is 1 */
                 1.0
-            } else if ix >= 0x3ff00000 {
+            } else if ix >= ONE_HIGH_WORD {
                 /* (|x|>1)**+-inf = inf,0 */
                 if hy >= 0 {
                     y
@@ -196,17 +176,17 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
             };
         }
 
-        if iy == 0x3ff00000 {
+        if iy == ONE_HIGH_WORD {
             /* y is +-1 */
             return if hy >= 0 { x } else { 1.0 / x };
         }
 
-        if hy == 0x40000000 {
+        if hy == TWO_HIGH_WORD {
             /* y is 2 */
             return x * x;
         }
 
-        if hy == 0x3fe00000 {
+        if hy == HALF_HIGH_WORD {
             /* y is 0.5 */
             if hx >= 0 {
                 /* x >= +0 */
@@ -218,7 +198,7 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
     let mut ax: f64 = fabs(x);
     if lx == 0 {
         /* special value of x */
-        if ix == 0x7ff00000 || ix == 0 || ix == 0x3ff00000 {
+        if ix == INFINITY_HIGH_WORD || ix == 0 || ix == ONE_HIGH_WORD {
             /* x is +-0,+-inf,+-1 */
             let mut z: f64 = ax;
 
@@ -228,7 +208,7 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
             }
 
             if hx < 0 {
-                if ((ix - 0x3ff00000) | yisint) == 0 {
+                if ((ix - ONE_HIGH_WORD) | yisint) == 0 {
                     z = f64::NAN; /* (-1)**non-int is NaN */
                 } else if yisint == 1 {
                     z = -z; /* (x<0)**odd = -(|x|**odd) */
@@ -252,91 +232,102 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
         }
     }
 
-    /* |y| is HUGE */
-    let t2: f64 = if iy > 0x41e00000 {
+    // Large powers use a separate expansion near x=1.
+    let t2: f64 = if iy > LARGE_POWER_HIGH_WORD {
         /* if |y| > 2**31 */
-        if iy > 0x43f00000 {
+        if iy > HUGE_POWER_HIGH_WORD {
             /* if |y| > 2**64, must o/uflow */
-            if ix <= 0x3fefffff {
-                return if hy < 0 { HUGE * HUGE } else { TINY * TINY };
+            if ix <= (ONE_HIGH_WORD - 1) {
+                return if hy < 0 {
+                    OVERFLOW_FACTOR * OVERFLOW_FACTOR
+                } else {
+                    UNDERFLOW_FACTOR * UNDERFLOW_FACTOR
+                };
             }
 
-            if ix >= 0x3ff00000 {
-                return if hy > 0 { HUGE * HUGE } else { TINY * TINY };
+            if ix >= ONE_HIGH_WORD {
+                return if hy > 0 {
+                    OVERFLOW_FACTOR * OVERFLOW_FACTOR
+                } else {
+                    UNDERFLOW_FACTOR * UNDERFLOW_FACTOR
+                };
             }
         }
 
         /* over/underflow if x is not close to one */
-        if ix < 0x3fefffff {
+        if ix < (ONE_HIGH_WORD - 1) {
             return if hy < 0 {
-                s * HUGE * HUGE
+                s * OVERFLOW_FACTOR * OVERFLOW_FACTOR
             } else {
-                s * TINY * TINY
+                s * UNDERFLOW_FACTOR * UNDERFLOW_FACTOR
             };
         }
-        if ix > 0x3ff00000 {
+        if ix > ONE_HIGH_WORD {
             return if hy > 0 {
-                s * HUGE * HUGE
+                s * OVERFLOW_FACTOR * OVERFLOW_FACTOR
             } else {
-                s * TINY * TINY
+                s * UNDERFLOW_FACTOR * UNDERFLOW_FACTOR
             };
         }
 
-        /* now |1-x| is TINY <= 2**-20, suffice to compute
-        log(x) by x-x^2/2+x^3/3-x^4/4 */
+        // Near x=1, use log(1+t) = t-t^2/2+t^3/3-t^4/4.
         let t: f64 = ax - 1.0; /* t has 20 trailing zeros */
-        let w: f64 = (t * t) * (0.5 - t * (0.3333333333333333333333 - t * 0.25));
-        let u: f64 = IVLN2_H * t; /* ivln2_h has 21 sig. bits */
-        let v: f64 = t * IVLN2_L - w * IVLN2;
+        let w: f64 = (t * t) * (0.5 - t * (1.0 / 3.0 - t * 0.25));
+        let u: f64 = LOG2_E_HI * t;
+        let v: f64 = t * LOG2_E_LO - w * LOG2_E;
         t1 = with_set_low_word(u + v, 0);
         v - (t1 - u)
     } else {
-        // double ss,s2,s_h,s_l,t_h,t_l;
         let mut n: i32 = 0;
 
-        if ix < 0x00100000 {
+        if ix < MIN_NORMAL_HIGH_WORD {
             /* take care subnormal number */
-            ax *= TWO53;
-            n -= 53;
+            ax *= SUBNORMAL_SCALE;
+            n -= f64::MANTISSA_DIGITS as i32;
             ix = get_high_word(ax) as i32;
         }
 
-        n += (ix >> 20) - 0x3ff;
-        j = ix & 0x000fffff;
+        n += (ix >> HIGH_FRACTION_BITS) - EXPONENT_BIAS;
+        j = ix & HIGH_FRACTION_MASK;
 
         /* determine interval */
         let k: i32;
-        ix = j | 0x3ff00000; /* normalize ix */
-        if j <= 0x3988E {
+        ix = j | ONE_HIGH_WORD; /* normalize ix */
+        if j <= SQRT_THREE_HALVES_FRACTION {
             /* |x|<sqrt(3/2) */
             k = 0;
-        } else if j < 0xBB67A {
+        } else if j < SQRT_THREE_FRACTION {
             /* |x|<sqrt(3)   */
             k = 1;
         } else {
             k = 0;
             n += 1;
-            ix -= 0x00100000;
+            ix -= EXPONENT_UNIT;
         }
         ax = with_set_high_word(ax, ix as u32);
 
         /* compute ss = s_h+s_l = (x-1)/(x+1) or (x-1.5)/(x+1.5) */
-        let u: f64 = ax - BP[k as usize]; /* bp[0]=1.0, bp[1]=1.5 */
-        let v: f64 = 1.0 / (ax + BP[k as usize]);
+        let u: f64 = ax - LOG_BASES[k as usize];
+        let v: f64 = 1.0 / (ax + LOG_BASES[k as usize]);
         let ss: f64 = u * v;
         let s_h = with_set_low_word(ss, 0);
 
-        /* t_h=ax+bp[k] High */
+        // Build ax+base's high word without rounding its low word.
         let t_h: f64 = with_set_high_word(
             0.0,
-            ((ix as u32 >> 1) | 0x20000000) + 0x00080000 + ((k as u32) << 18),
+            ((ix as u32 >> 1) | HALF_EXPONENT_BIAS_WORD)
+                + HALF_EXPONENT_UNIT_WORD
+                + ((k as u32) << (HIGH_FRACTION_BITS - 2)),
         );
-        let t_l: f64 = ax - (t_h - BP[k as usize]);
+        let t_l: f64 = ax - (t_h - LOG_BASES[k as usize]);
         let s_l: f64 = v * ((u - s_h * t_h) - s_h * t_l);
 
         /* compute log(ax) */
         let s2: f64 = ss * ss;
-        let mut r: f64 = s2 * s2 * (L1 + s2 * (L2 + s2 * (L3 + s2 * (L4 + s2 * (L5 + s2 * L6)))));
+        let mut r: f64 = s2
+            * s2
+            * (LOG_L1
+                + s2 * (LOG_L2 + s2 * (LOG_L3 + s2 * (LOG_L4 + s2 * (LOG_L5 + s2 * LOG_L6)))));
         r += s_l * (s_h + ss);
         let s2: f64 = s_h * s_h;
         let t_h: f64 = with_set_low_word(3.0 + s2 + r, 0);
@@ -349,13 +340,13 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
         /* 2/(3log2)*(ss+...) */
         let p_h: f64 = with_set_low_word(u + v, 0);
         let p_l = v - (p_h - u);
-        let z_h: f64 = CP_H * p_h; /* cp_h+cp_l = 2/(3*log2) */
-        let z_l: f64 = CP_L * p_h + p_l * CP + DP_L[k as usize];
+        let z_h: f64 = LOG_SCALE_HI * p_h;
+        let z_l: f64 = LOG_SCALE_LO * p_h + p_l * LOG_SCALE + LOG2_BASE_LO[k as usize];
 
-        /* log2(ax) = (ss+..)*2/(3*log2) = n + dp_h + z_h + z_l */
+        // Combine the exponent, base logarithm, and correction.
         let t: f64 = n as f64;
-        t1 = with_set_low_word(((z_h + z_l) + DP_H[k as usize]) + t, 0);
-        z_l - (((t1 - t) - DP_H[k as usize]) - z_h)
+        t1 = with_set_low_word(((z_h + z_l) + LOG2_BASE_HI[k as usize]) + t, 0);
+        z_l - (((t1 - t) - LOG2_BASE_HI[k as usize]) - z_h)
     };
 
     /* split up y into y1+y2 and compute (y1+y2)*(t1+t2) */
@@ -363,45 +354,44 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
     let p_l: f64 = (y - y1) * t1 + y * t2;
     let mut p_h: f64 = y1 * t1;
     let z: f64 = p_l + p_h;
-    let mut j: i32 = (z.to_bits() >> 32) as i32;
-    let i: i32 = z.to_bits() as i32;
-    // let (j, i): (i32, i32) = ((z.to_bits() >> 32) as i32, z.to_bits() as i32);
+    let mut j: i32 = get_high_word(z) as i32;
+    let i: i32 = get_low_word(z) as i32;
 
-    if j >= 0x40900000 {
+    if j >= EXP2_OVERFLOW_HIGH_WORD {
         /* z >= 1024 */
-        if (j - 0x40900000) | i != 0 {
+        if (j - EXP2_OVERFLOW_HIGH_WORD) | i != 0 {
             /* if z > 1024 */
-            return s * HUGE * HUGE; /* overflow */
+            return s * OVERFLOW_FACTOR * OVERFLOW_FACTOR; /* overflow */
         }
 
-        if p_l + OVT > z - p_h {
-            return s * HUGE * HUGE; /* overflow */
+        if p_l + OVERFLOW_CORRECTION > z - p_h {
+            return s * OVERFLOW_FACTOR * OVERFLOW_FACTOR; /* overflow */
         }
-    } else if (j & 0x7fffffff) >= 0x4090cc00 {
+    } else if (j & ABS_HIGH_MASK) >= (EXP2_ZERO_HIGH_WORD & ABS_HIGH_MASK) {
         /* z <= -1075 */
         // FIXME: instead of abs(j) use unsigned j
 
-        if (((j as u32) - 0xc090cc00) | (i as u32)) != 0 {
+        if (((j as u32) - EXP2_ZERO_HIGH_WORD as u32) | (i as u32)) != 0 {
             /* z < -1075 */
-            return s * TINY * TINY; /* underflow */
+            return s * UNDERFLOW_FACTOR * UNDERFLOW_FACTOR; /* underflow */
         }
 
         if p_l <= z - p_h {
-            return s * TINY * TINY; /* underflow */
+            return s * UNDERFLOW_FACTOR * UNDERFLOW_FACTOR; /* underflow */
         }
     }
 
     /* compute 2**(p_h+p_l) */
-    let i: i32 = j & 0x7fffffff_i32;
-    k = (i >> 20) - 0x3ff;
+    let i: i32 = j & ABS_HIGH_MASK;
+    k = (i >> HIGH_FRACTION_BITS) - EXPONENT_BIAS;
     let mut n: i32 = 0;
 
-    if i > 0x3fe00000 {
+    if i > HALF_HIGH_WORD {
         /* if |z| > 0.5, set n = [z+0.5] */
-        n = j + (0x00100000 >> (k + 1));
-        k = ((n & 0x7fffffff) >> 20) - 0x3ff; /* new k for n */
-        let t: f64 = with_set_high_word(0.0, (n & !(0x000fffff >> k)) as u32);
-        n = ((n & 0x000fffff) | 0x00100000) >> (20 - k);
+        n = j + (EXPONENT_UNIT >> (k + 1));
+        k = ((n & ABS_HIGH_MASK) >> HIGH_FRACTION_BITS) - EXPONENT_BIAS; /* new k for n */
+        let t: f64 = with_set_high_word(0.0, (n & !(HIGH_FRACTION_MASK >> k)) as u32);
+        n = ((n & HIGH_FRACTION_MASK) | EXPONENT_UNIT) >> (HIGH_FRACTION_BITS - k);
         if j < 0 {
             n = -n;
         }
@@ -409,18 +399,17 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
     }
 
     let t: f64 = with_set_low_word(p_l + p_h, 0);
-    let u: f64 = t * LG2_H;
-    let v: f64 = (p_l - (t - p_h)) * LG2 + t * LG2_L;
+    let u: f64 = t * LN_2_HI;
+    let v: f64 = (p_l - (t - p_h)) * LN_2 + t * LN_2_LO;
     let mut z: f64 = u + v;
     let w: f64 = v - (z - u);
-    let t: f64 = z * z;
-    let t1: f64 = z - t * (P1 + t * (P2 + t * (P3 + t * (P4 + t * P5))));
+    let t1 = exp_correction(z);
     let r: f64 = (z * t1) / (t1 - 2.0) - (w + z * w);
     z = 1.0 - (r - z);
     j = get_high_word(z) as i32;
-    j += n << 20;
+    j += n << HIGH_FRACTION_BITS;
 
-    if (j >> 20) <= 0 {
+    if (j >> HIGH_FRACTION_BITS) <= 0 {
         /* subnormal output */
         z = scalbn(z, n);
     } else {
@@ -428,4 +417,26 @@ const fn pow_inner(x: f64, y: f64) -> f64 {
     }
 
     s * z
+}
+
+#[cfg(test)]
+mod tests {
+    use super::pow;
+
+    #[test]
+    fn exponent_limits_const() {
+        const MIN_SUBNORMAL: f64 = f64::MIN_POSITIVE * f64::EPSILON;
+        const MAX_POWER_OF_TWO: f64 = crate::expi(2.0, (f64::MAX_EXP - 1) as isize);
+        const LAST_ODD_INTEGER: f64 = crate::expi(2.0, f64::MANTISSA_DIGITS as isize) - 1.0;
+        assert_eq!((const { pow(2.0, 1023.0) }), MAX_POWER_OF_TWO);
+        assert!((const { pow(2.0, 1024.0) }).is_infinite());
+        assert_eq!((const { pow(2.0, -1074.0) }), MIN_SUBNORMAL);
+        assert_eq!((const { pow(2.0, -1075.0) }).to_bits(), 0);
+        assert_eq!(
+            (const { pow(-2.0, -1075.0) }).to_bits(),
+            (-0.0_f64).to_bits()
+        );
+        assert_eq!((const { pow(-1.0, LAST_ODD_INTEGER) }), -1.0);
+        assert_eq!((const { pow(-1.0, LAST_ODD_INTEGER + 1.0) }), 1.0);
+    }
 }

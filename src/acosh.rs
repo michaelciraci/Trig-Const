@@ -2,8 +2,6 @@ use crate::ln;
 
 use super::{log1p::log1p, sqrt};
 
-const LN2: f64 = 0.693147180559945309417232121458176568; /* 0x3fe62e42,  0xfefa39ef*/
-
 /// Inverse hyperbolic cosine (f64)
 ///
 /// Calculates the inverse hyperbolic cosine of `x`.
@@ -15,6 +13,7 @@ const LN2: f64 = 0.693147180559945309417232121458176568; /* 0x3fe62e42,  0xfefa3
 /// const ACOSH_1: f64 = acosh(1.0);
 /// assert_eq!(ACOSH_1, 0.0);
 /// ```
+#[must_use]
 pub const fn acosh(x: f64) -> f64 {
     nightly_exp!(acosh, acosh_inner, x)
 }
@@ -34,5 +33,5 @@ const fn acosh_inner(x: f64) -> f64 {
         return ln(2.0 * x - 1.0 / (x + sqrt(x * x - 1.0)));
     }
     /* |x| >= 0x1p26 or nan */
-    ln(x) + LN2
+    ln(x) + core::f64::consts::LN_2
 }

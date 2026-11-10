@@ -10,10 +10,10 @@
  * ====================================================
  */
 
-const O_THRESHOLD: f64 = 7.09782712893383973096e+02; /* 0x40862E42, 0xFEFA39EF */
+const O_THRESHOLD: f64 = crate::ln(f64::MAX);
 const LN2_HI: f64 = 6.93147180369123816490e-01; /* 0x3fe62e42, 0xfee00000 */
 const LN2_LO: f64 = 1.90821492927058770002e-10; /* 0x3dea39ef, 0x35793c76 */
-const INVLN2: f64 = 1.44269504088896338700e+00; /* 0x3ff71547, 0x652b82fe */
+const INVLN2: f64 = core::f64::consts::LOG2_E;
 /* Scaled Q's: Qn_here = 2**n * Qn_above, for R(2*z) where z = hxs = x*x/2: */
 const Q1: f64 = -3.33333333333331316428e-02; /* BFA11111 111110F4 */
 const Q2: f64 = 1.58730158725481460165e-03; /* 3F5A01A0 19FE5585 */
@@ -23,6 +23,7 @@ const Q5: f64 = -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
 /// Computes exp(x) - 1 without cancellation near zero.
 pub(crate) const fn expm1(mut x: f64) -> f64 {
+    const TWO_POW_1023: f64 = crate::expi(2.0, (f64::MAX_EXP - 1) as isize);
     let hi: f64;
     let lo: f64;
     let k: i32;
@@ -44,7 +45,7 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
             return -1.0;
         }
         if x > O_THRESHOLD {
-            x *= f64::from_bits(0x7fe0000000000000);
+            x *= TWO_POW_1023;
             return x;
         }
     }
@@ -107,7 +108,7 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
         /* suffice to return exp(x)-1 */
         y = x - e + 1.0;
         if k == 1024 {
-            y = y * 2.0 * f64::from_bits(0x7fe0000000000000);
+            y = y * 2.0 * TWO_POW_1023;
         } else {
             y = y * twopk;
         }

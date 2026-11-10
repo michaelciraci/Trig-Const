@@ -14,7 +14,7 @@ use super::rem_pio2_large::rem_pio2_large;
 
 // #if FLT_EVAL_METHOD==0 || FLT_EVAL_METHOD==1
 // #define EPS DBL_EPSILON
-const EPS: f64 = 2.2204460492503131e-16;
+const EPS: f64 = f64::EPSILON;
 // #elif FLT_EVAL_METHOD==2
 // #define EPS LDBL_EPSILON
 // #endif
@@ -23,7 +23,7 @@ const EPS: f64 = 2.2204460492503131e-16;
 
 const TO_INT: f64 = 1.5 / EPS;
 /// 53 bits of 2/pi
-const INV_PIO2: f64 = 6.36619772367581382433e-01; /* 0x3FE45F30, 0x6DC9C883 */
+const INV_PIO2: f64 = core::f64::consts::FRAC_2_PI;
 /// first 33 bits of pi/2
 const PIO2_1: f64 = 1.57079632673412561417e+00; /* 0x3FF921FB, 0x54400000 */
 /// pi/2 - PIO2_1
@@ -42,7 +42,7 @@ const PIO2_3T: f64 = 8.47842766036889956997e-32; /* 0x397B839A, 0x252049C1 */
 //
 // caller must handle the case when reduction is not needed: |x| ~<= pi/4 */
 pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
-    let x1p24 = f64::from_bits(0x4170000000000000);
+    const TWO_POW_24: f64 = crate::expi(2.0, 24);
 
     let sign = (f64::to_bits(x) >> 63) as i32;
     let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
@@ -172,7 +172,7 @@ pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
     let mut i = 0;
     while i < 2 {
         tx[i] = z as i32 as f64;
-        z = (z - tx[i]) * x1p24;
+        z = (z - tx[i]) * TWO_POW_24;
         i += 1;
     }
     tx[2] = z;

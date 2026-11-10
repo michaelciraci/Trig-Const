@@ -50,17 +50,19 @@ use crate::{k_cos::k_cos, k_sin::k_sin, rem_pio2::rem_pio2};
 /// const SIN_PI: f64 = sin(PI);
 /// float_eq(SIN_PI, 0.0);
 /// ```
+#[must_use]
 pub const fn sin(x: f64) -> f64 {
     nightly_exp!(sin, sin_inner, x)
 }
 
 const fn sin_inner(x: f64) -> f64 {
+    const SMALL_ANGLE: f64 = crate::expi(2.0, -26);
     /* High word of x. */
-    let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
+    let ix = crate::get_high_word(x.abs());
 
     /* |x| ~< pi/4 */
-    if ix <= 0x3fe921fb {
-        if ix < 0x3e500000 {
+    if ix <= crate::get_high_word(core::f64::consts::FRAC_PI_4) {
+        if ix < crate::get_high_word(SMALL_ANGLE) {
             /* |x| < 2**-26 */
             /* raise inexact if x != 0 and underflow if subnormal*/
             return x;
@@ -69,7 +71,7 @@ const fn sin_inner(x: f64) -> f64 {
     }
 
     /* sin(Inf or NaN) is NaN */
-    if ix >= 0x7ff00000 {
+    if ix >= crate::get_high_word(f64::INFINITY) {
         return f64::NAN;
     }
 

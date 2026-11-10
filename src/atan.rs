@@ -29,22 +29,16 @@
  * to produce the hexadecimal values shown.
  */
 
-use crate::fabs;
+use crate::{
+    atan_constants::{ATAN_HALF, ATAN_ONE, ATAN_THREE_HALVES},
+    fabs, PIO2_HI, PIO2_LO,
+};
 
-const ATANHI: [f64; 4] = [
-    4.63647609000806093515e-01, /* atan(0.5)hi 0x3FDDAC67, 0x0561BB4F */
-    7.85398163397448278999e-01, /* atan(1.0)hi 0x3FE921FB, 0x54442D18 */
-    9.82793723247329054082e-01, /* atan(1.5)hi 0x3FEF730B, 0xD281F69B */
-    1.57079632679489655800e+00, /* atan(inf)hi 0x3FF921FB, 0x54442D18 */
-];
+const ATANHI: [f64; 4] = [ATAN_HALF.hi, ATAN_ONE.hi, ATAN_THREE_HALVES.hi, PIO2_HI];
 
-const ATANLO: [f64; 4] = [
-    2.26987774529616870924e-17, /* atan(0.5)lo 0x3C7A2B7F, 0x222F65E2 */
-    3.06161699786838301793e-17, /* atan(1.0)lo 0x3C81A626, 0x33145C07 */
-    1.39033110312309984516e-17, /* atan(1.5)lo 0x3C700788, 0x7AF0CBBD */
-    6.12323399573676603587e-17, /* atan(inf)lo 0x3C91A626, 0x33145C07 */
-];
+const ATANLO: [f64; 4] = [ATAN_HALF.lo, ATAN_ONE.lo, ATAN_THREE_HALVES.lo, PIO2_LO];
 
+// Fitted coefficients for the reduced-argument polynomial.
 const AT: [f64; 11] = [
     3.33333333333329318027e-01,  /* 0x3FD55555, 0x5555550D */
     -1.99999999998764832476e-01, /* 0xBFC99999, 0x9998EBC4 */
@@ -67,6 +61,7 @@ const AT: [f64; 11] = [
 /// const ATAN_1: f64 = atan(1.0);
 /// assert_eq!(ATAN_1, PI / 4.0);
 /// ```
+#[must_use]
 pub const fn atan(x: f64) -> f64 {
     nightly_exp!(atan, atan_inner, x)
 }

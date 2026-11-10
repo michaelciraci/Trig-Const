@@ -43,17 +43,19 @@ use super::{k_tan::k_tan, rem_pio2::rem_pio2};
 /// The tangent of `x` (f64).
 ///
 /// `x` is specified in radians.
+#[must_use]
 pub const fn tan(x: f64) -> f64 {
     nightly_exp!(tan, tan_inner, x)
 }
 
 const fn tan_inner(x: f64) -> f64 {
+    const SMALL_ANGLE: f64 = crate::expi(2.0, -27);
     // let x1p120 = f32::from_bits(0x7b800000); // 0x1p120f === 2 ^ 120
 
-    let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
+    let ix = crate::get_high_word(x.abs());
     /* |x| ~< pi/4 */
-    if ix <= 0x3fe921fb {
-        if ix < 0x3e400000 {
+    if ix <= crate::get_high_word(core::f64::consts::FRAC_PI_4) {
+        if ix < crate::get_high_word(SMALL_ANGLE) {
             /* |x| < 2**-27 */
             /* raise inexact if x!=0 and underflow if subnormal */
             // force_eval!(if ix < 0x00100000 { x / x1p120 as f64 } else { x + x1p120 as f64 });
@@ -63,7 +65,7 @@ const fn tan_inner(x: f64) -> f64 {
     }
 
     /* tan(Inf or NaN) is NaN */
-    if ix >= 0x7ff00000 {
+    if ix >= crate::get_high_word(f64::INFINITY) {
         return f64::NAN;
     }
 

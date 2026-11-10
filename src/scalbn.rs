@@ -1,9 +1,9 @@
-const SIG_BITS: u32 = 52;
-const BITS: u32 = 64;
+const SIG_BITS: u32 = f64::MANTISSA_DIGITS - 1;
+const BITS: u32 = u64::BITS;
 const EXP_BITS: u32 = BITS - SIG_BITS - 1;
 const EXP_SAT: u32 = (1 << EXP_BITS) - 1;
 const EXP_BIAS: u32 = EXP_SAT >> 1;
-const SIG_MASK: u64 = 4503599627370495;
+const SIG_MASK: u64 = (1_u64 << SIG_BITS) - 1;
 const EXP_MAX: i32 = EXP_BIAS as i32;
 const EXP_MIN: i32 = -(EXP_MAX - 1);
 

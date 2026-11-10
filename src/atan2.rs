@@ -38,7 +38,7 @@
  */
 use core::f64::consts::PI;
 
-use crate::{atan, fabs};
+use crate::{atan, fabs, PIO2_LO};
 
 /// Arctan2
 ///
@@ -48,12 +48,13 @@ use crate::{atan, fabs};
 /// const ATAN2_0_1: f64 = atan2(0.0, 1.0);
 /// assert_eq!(ATAN2_0_1, 0.0);
 /// ```
+#[must_use]
 pub const fn atan2(y: f64, x: f64) -> f64 {
     nightly_exp!(atan2, atan2_inner, y, x)
 }
 
 const fn atan2_inner(y: f64, x: f64) -> f64 {
-    const PI_LO: f64 = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
+    const PI_LO: f64 = 2.0 * PIO2_LO;
     if x.is_nan() || y.is_nan() {
         return x + y;
     }

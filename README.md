@@ -70,6 +70,12 @@ fn main() {
 
 Precision will be different platform to platform. There is a precision comparison within examples, under `examples/std_cmp.rs` (to run: `cargo run --release --example std_cmp`).
 
+This measures agreement with the platform's `std` implementation, which can
+also have rounding errors. In particular, the large absolute difference for
+`tan` near a pole can represent only a few ULP on a large result. The
+[tangent regression tests](src/tan.rs) include independent reference values
+where this crate is more accurate than `std`.
+
 On aarch64, I get:
 
 Func   | Total Tests| Diff Count|       Max Diff

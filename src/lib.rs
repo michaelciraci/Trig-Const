@@ -15,6 +15,7 @@ mod asin;
 mod asinh;
 mod atan;
 mod atan2;
+mod atan_constants;
 mod atanh;
 mod cos;
 mod exp;
@@ -25,6 +26,7 @@ mod k_sin;
 pub(crate) mod k_tan;
 mod ln;
 pub(crate) mod log1p;
+mod log_constants;
 mod pow;
 mod rem_pio2;
 mod rem_pio2_large;
@@ -46,6 +48,10 @@ pub use pow::pow;
 pub use sin::sin;
 pub use tan::tan;
 
+// Shared high/low representation of pi/2.
+pub(crate) const PIO2_HI: f64 = atan_constants::ATAN_INFINITY.hi;
+pub(crate) const PIO2_LO: f64 = atan_constants::ATAN_INFINITY.lo;
+
 /// Cotangent
 ///
 /// ```
@@ -55,6 +61,7 @@ pub use tan::tan;
 /// const COT_PI_4: f64 = cot(PI / 4.0);
 /// float_eq(COT_PI_4, 1.0);
 /// ```
+#[must_use]
 pub const fn cot(x: f64) -> f64 {
     let sin_calc = sin(x);
     if sin_calc == 0.0 {
@@ -72,6 +79,7 @@ pub const fn cot(x: f64) -> f64 {
 /// const SEC_PI: f64 = sec(PI);
 /// assert_eq!(SEC_PI, -1.0);
 /// ```
+#[must_use]
 pub const fn sec(x: f64) -> f64 {
     let cos_calc = cos(x);
     if cos_calc == 0.0 {
@@ -89,6 +97,7 @@ pub const fn sec(x: f64) -> f64 {
 /// const CSC_PI_2: f64 = csc(PI / 2.0);
 /// assert_eq!(CSC_PI_2, 1.0);
 /// ```
+#[must_use]
 pub const fn csc(x: f64) -> f64 {
     let sin_calc = sin(x);
     if sin_calc == 0.0 {
@@ -105,15 +114,18 @@ pub const fn csc(x: f64) -> f64 {
 /// const SINH_0: f64 = sinh(0.0);
 /// assert_eq!(SINH_0, 0.0);
 /// ```
+#[must_use]
 pub const fn sinh(x: f64) -> f64 {
     nightly_exp!(sinh, sinh_inner, x)
 }
 
 const fn sinh_inner(x: f64) -> f64 {
+    const LOG_MAX: f64 = ln(f64::MAX);
+    const SMALL_ANGLE: f64 = expi(2.0, -26);
     let magnitude = x.abs();
-    let result = if magnitude < 709.782712893384 {
+    let result = if magnitude < LOG_MAX {
         // expm1 retains the low bits that exp(x) - 1 loses near zero.
-        if magnitude < 1.4901161193847656e-8 {
+        if magnitude < SMALL_ANGLE {
             return x;
         }
         let t = expm1::expm1(magnitude);
@@ -141,6 +153,7 @@ const fn sinh_inner(x: f64) -> f64 {
 /// const COSH_0: f64 = cosh(0.0);
 /// assert_eq!(COSH_0, 1.0);
 /// ```
+#[must_use]
 pub const fn cosh(x: f64) -> f64 {
     nightly_exp!(cosh, cosh_inner, x)
 }
@@ -150,6 +163,7 @@ const fn cosh_inner(x: f64) -> f64 {
 }
 
 /// x^pow
+#[must_use]
 pub const fn expi(x: f64, mut pow: isize) -> f64 {
     let mut o = 1.0;
 
@@ -166,6 +180,7 @@ pub const fn expi(x: f64, mut pow: isize) -> f64 {
 }
 
 /// Factorial (x!)
+#[must_use]
 pub const fn factorial(mut x: f64) -> f64 {
     if x == 0.0 || x == 1.0 {
         1.0
@@ -182,6 +197,7 @@ pub const fn factorial(mut x: f64) -> f64 {
 /// Square root, rounded to the nearest representable value.
 ///
 /// Preserves signed zero and positive infinity. Negative inputs return NaN.
+#[must_use]
 pub const fn sqrt(x: f64) -> f64 {
     nightly_exp!(sqrt, sqrt_inner, x)
 }
@@ -241,24 +257,25 @@ const fn sqrt_inner(x: f64) -> f64 {
     f64::from_bits((result_exponent << 52) + (root - (1_u64 << 52)))
 }
 
+#[must_use]
 pub const fn fabs(x: f64) -> f64 {
     x.abs()
 }
 
 const fn with_set_high_word(f: f64, hi: u32) -> f64 {
     let mut tmp = f.to_bits();
-    tmp &= 0x00000000_ffffffff;
-    tmp |= (hi as u64) << 32;
+    tmp &= u32::MAX as u64;
+    tmp |= (hi as u64) << u32::BITS;
     f64::from_bits(tmp)
 }
 const fn with_set_low_word(f: f64, lo: u32) -> f64 {
     let mut tmp = f.to_bits();
-    tmp &= 0xffffffff_00000000;
+    tmp &= !(u32::MAX as u64);
     tmp |= lo as u64;
     f64::from_bits(tmp)
 }
 const fn get_high_word(x: f64) -> u32 {
-    (x.to_bits() >> 32) as u32
+    (x.to_bits() >> u32::BITS) as u32
 }
 
 const fn get_low_word(x: f64) -> u32 {

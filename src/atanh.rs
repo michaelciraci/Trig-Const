@@ -5,6 +5,7 @@ use crate::log1p::log1p;
 ///
 /// Calculates the inverse hyperbolic tangent of `x`.
 /// Is defined as `log((1+x)/(1-x))/2 = log1p(2x/(1-x))/2`.
+#[must_use]
 pub const fn atanh(x: f64) -> f64 {
     nightly_exp!(atanh, atanh_inner, x)
 }
@@ -14,8 +15,7 @@ const fn atanh_inner(x: f64) -> f64 {
     let e = ((u >> 52) as usize) & 0x7ff;
     let sign = (u >> 63) != 0;
 
-    /* |x| */
-    let mut y = f64::from_bits(u & 0x7fff_ffff_ffff_ffff);
+    let mut y = x.abs();
 
     if e < 0x3ff - 1 {
         if e < 0x3ff - 32 {

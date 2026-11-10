@@ -25,6 +25,9 @@ const STEP: f64 = 0.000001;
 /// tan    |    50265483|   20777207|     3.72529e-9
 /// ```
 fn main() {
+    // Optional filter for what function to run. For example:
+    // `cargo run --release --example std_cmp tan`
+    let func_filter = std::env::args().skip(1).next();
     println!(
         "{:<7}|{:>12}|{:>11}|{:>15}",
         "Func", "Total Tests", "Diff Count", "Max Diff"
@@ -161,6 +164,11 @@ fn main() {
     ];
 
     for test in tests {
+        if let Some(filter) = &func_filter {
+            if !test.name.contains(filter) {
+                continue;
+            }
+        }
         let diff = compare_functions(&test);
         println!(
             "{:<7}|{:>12}|{:>11}|{:>15.5e}",
