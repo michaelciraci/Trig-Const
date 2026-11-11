@@ -75,7 +75,7 @@ const fn acos_inner(x: f64) -> f64 {
     }
     /* x < -0.5 */
     if (hx >> 31) != 0 {
-        let z = (1.0 + x) * 0.5;
+        let z = f64::midpoint(1.0, x);
         let s = sqrt(z);
         let w = asin_correction(z) * s - PIO2_LO;
         return 2. * (PIO2_HI - (s + w));

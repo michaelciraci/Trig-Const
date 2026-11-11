@@ -133,7 +133,7 @@ const fn sinh_inner(x: f64) -> f64 {
         if magnitude < 1.0 {
             0.5 * (2.0 * t - t * t / (t + 1.0))
         } else {
-            0.5 * (t + t / (t + 1.0))
+            f64::midpoint(t, t / (t + 1.0))
         }
     } else {
         // Scale before multiplication so exp(x) need not fit in an f64.
@@ -166,7 +166,7 @@ const fn cosh_inner(x: f64) -> f64 {
         let t = exp(0.5 * x.abs());
         (0.5 * t) * t
     } else {
-        (exp(x) + exp(-x)) / 2.0
+        f64::midpoint(exp(x), exp(-x))
     }
 }
 
