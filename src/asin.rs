@@ -84,7 +84,7 @@ const fn asin_inner(mut x: f64) -> f64 {
             /* asin(1) = +-pi/2 with inexact */
             return x * PIO2_HI + TWO_POW_NEG_120;
         } else {
-            return f64::INFINITY;
+            return f64::NAN;
         }
     }
     /* |x| < 0.5 */

@@ -160,7 +160,14 @@ pub const fn cosh(x: f64) -> f64 {
 }
 
 const fn cosh_inner(x: f64) -> f64 {
-    (exp(x) + exp(-x)) / 2.0
+    const LOG_MAX: f64 = ln(f64::MAX);
+    if x.abs() >= LOG_MAX {
+        // Scale before multiplication so exp(|x|) need not fit in an f64.
+        let t = exp(0.5 * x.abs());
+        (0.5 * t) * t
+    } else {
+        (exp(x) + exp(-x)) / 2.0
+    }
 }
 
 /// x^pow
@@ -437,9 +444,55 @@ mod tests {
     }
 
     #[test]
+    fn test_cosh_large_and_special_values_const() {
+        fn assert_close(actual: f64, expected: f64) {
+            assert!((actual / expected - 1.0).abs() <= 2.0 * f64::EPSILON);
+        }
+
+        assert_close(const { cosh(709.78) }, 709.78_f64.cosh());
+        assert_close(
+            const { cosh(709.7827128933839) },
+            709.7827128933839_f64.cosh(),
+        );
+        assert_close(
+            const { cosh(709.782712893384) },
+            709.782712893384_f64.cosh(),
+        );
+        assert_close(const { cosh(710.0) }, 710.0_f64.cosh());
+        assert_close(const { cosh(-710.0) }, (-710.0_f64).cosh());
+        assert_close(const { cosh(710.47) }, 710.47_f64.cosh());
+        assert_close(
+            const { cosh(710.4758600739439) },
+            710.4758600739439_f64.cosh(),
+        );
+        assert_eq!((const { cosh(710.475860073944) }), f64::INFINITY);
+        assert_eq!((const { cosh(f64::INFINITY) }), f64::INFINITY);
+        assert_eq!((const { cosh(f64::NEG_INFINITY) }), f64::INFINITY);
+        assert!(const { cosh(f64::NAN) }.is_nan());
+    }
+
+    #[test]
+    fn test_inverse_trig_domain_const() {
+        assert!(const { crate::asin(1.1) }.is_nan());
+        assert!(const { crate::asin(-1.1) }.is_nan());
+        assert!(const { crate::asin(1.0000000000000002) }.is_nan());
+        assert!(const { crate::asin(f64::INFINITY) }.is_nan());
+        assert!(const { crate::asin(f64::NAN) }.is_nan());
+        assert!(const { crate::acos(1.1) }.is_nan());
+        assert!(const { crate::acos(-1.1) }.is_nan());
+        assert!(const { crate::acos(-1.0000000000000002) }.is_nan());
+        assert!(const { crate::acos(f64::NEG_INFINITY) }.is_nan());
+        assert!(const { crate::acos(f64::NAN) }.is_nan());
+        assert_eq!((const { crate::asin(1.0) }), core::f64::consts::FRAC_PI_2);
+        assert_eq!((const { crate::asin(-1.0) }), -core::f64::consts::FRAC_PI_2);
+        assert_eq!((const { crate::acos(1.0) }), 0.0);
+        assert_eq!((const { crate::acos(-1.0) }), core::f64::consts::PI);
+    }
+
+    #[test]
     fn test_ln() {
-        // float_eq!(ln(0.01), 0.01_f64.ln());
-        // float_eq!(ln(0.5), 0.5_f64.ln());
+        float_eq!(ln(0.01), 0.01_f64.ln());
+        float_eq!(ln(0.5), 0.5_f64.ln());
         float_eq!(ln(1.0), 1.0_f64.ln());
         float_eq!(ln(2.0), 2.0_f64.ln());
         float_eq!(ln(10.0), 10.0_f64.ln());

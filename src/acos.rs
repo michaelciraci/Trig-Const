@@ -63,7 +63,7 @@ const fn acos_inner(x: f64) -> f64 {
             }
             return 0.0;
         }
-        return f64::INFINITY;
+        return f64::NAN;
     }
     /* |x| < 0.5 */
     if ix < 0x3fe00000 {
