@@ -50,9 +50,6 @@ pub const fn acos(x: f64) -> f64 {
 
 const fn acos_inner(x: f64) -> f64 {
     const TWO_POW_NEG_120: f64 = crate::expi(2.0, -120);
-    let z: f64;
-    let w: f64;
-    let s: f64;
     let hx: u32 = (x.to_bits() >> 32) as u32;
     let ix: u32 = hx & 0x7fffffff;
     /* |x| >= 1 or nan */
@@ -78,17 +75,17 @@ const fn acos_inner(x: f64) -> f64 {
     }
     /* x < -0.5 */
     if (hx >> 31) != 0 {
-        z = (1.0 + x) * 0.5;
-        s = sqrt(z);
-        w = asin_correction(z) * s - PIO2_LO;
+        let z = (1.0 + x) * 0.5;
+        let s = sqrt(z);
+        let w = asin_correction(z) * s - PIO2_LO;
         return 2. * (PIO2_HI - (s + w));
     }
     /* x > 0.5 */
-    z = (1.0 - x) * 0.5;
-    s = sqrt(z);
+    let z = (1.0 - x) * 0.5;
+    let s = sqrt(z);
     let df = crate::with_set_low_word(s, 0);
 
     let c: f64 = (z - df * df) / (s + df);
-    w = asin_correction(z) * s + c;
+    let w = asin_correction(z) * s + c;
     2. * (df + w)
 }

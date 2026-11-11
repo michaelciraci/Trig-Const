@@ -27,7 +27,7 @@ const STEP: f64 = 0.000001;
 fn main() {
     // Optional filter for what function to run. For example:
     // `cargo run --release --example std_cmp tan`
-    let func_filter = std::env::args().skip(1).next();
+    let func_filter = std::env::args().nth(1);
     println!(
         "{:<7}|{:>12}|{:>11}|{:>15}",
         "Func", "Total Tests", "Diff Count", "Max Diff"
