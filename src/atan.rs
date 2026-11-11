@@ -71,7 +71,7 @@ const fn atan_inner(x: f64) -> f64 {
     let mut ix = (x.to_bits() >> 32) as u32;
     let sign = ix >> 31;
     ix &= 0x7fff_ffff;
-    if ix >= 0x4410_0000 {
+    if ix >= crate::get_high_word(crate::expi(2.0, 66)) {
         if x.is_nan() {
             return x;
         }
@@ -80,9 +80,9 @@ const fn atan_inner(x: f64) -> f64 {
         return if sign != 0 { -z } else { z };
     }
 
-    let id = if ix < 0x3fdc_0000 {
+    let id = if ix < crate::get_high_word(7.0 / 16.0) {
         /* |x| < 0.4375 */
-        if ix < 0x3e40_0000 {
+        if ix < crate::get_high_word(crate::expi(2.0, -27)) {
             /* |x| < 2^-27 */
 
             return x;
@@ -91,9 +91,9 @@ const fn atan_inner(x: f64) -> f64 {
         -1
     } else {
         x = fabs(x);
-        if ix < 0x3ff30000 {
+        if ix < crate::get_high_word(19.0 / 16.0) {
             /* |x| < 1.1875 */
-            if ix < 0x3fe60000 {
+            if ix < crate::get_high_word(11.0 / 16.0) {
                 /* 7/16 <= |x| < 11/16 */
                 x = (2. * x - 1.) / (2. + x);
                 0
@@ -102,7 +102,7 @@ const fn atan_inner(x: f64) -> f64 {
                 x = (x - 1.) / (x + 1.);
                 1
             }
-        } else if ix < 0x40038000 {
+        } else if ix < crate::get_high_word(39.0 / 16.0) {
             /* |x| < 2.4375 */
             x = (x - 1.5) / (1. + 1.5 * x);
             2

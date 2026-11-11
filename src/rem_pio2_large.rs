@@ -222,7 +222,6 @@ const PIO2: [f64; 8] = [
 /// more accurately, = 0 mod 8 ). Thus the number of operations are
 /// independent of the exponent of the input.
 pub(crate) const fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
-    const TWO_POW_24: f64 = crate::expi(2.0, 24);
     const TWO_POW_NEG_24: f64 = crate::expi(2.0, -24);
 
     if cfg!(target_pointer_width = "64") {
@@ -286,7 +285,7 @@ pub(crate) const fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usiz
         let mut j = jz;
         while j >= 1 {
             fw = (TWO_POW_NEG_24 * z) as i32 as f64;
-            iq[i as usize] = (z - TWO_POW_24 * fw) as i32;
+            iq[i as usize] = (z - crate::constants::PIO2_CHUNK_SCALE * fw) as i32;
             z = q[j - 1] + fw;
             i += 1;
             j -= 1;
@@ -395,9 +394,9 @@ pub(crate) const fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usiz
     } else {
         /* break z into 24-bit if necessary */
         z = scalbn(z, -q0);
-        if z >= TWO_POW_24 {
+        if z >= crate::constants::PIO2_CHUNK_SCALE {
             fw = (TWO_POW_NEG_24 * z) as i32 as f64;
-            iq[jz] = (z - TWO_POW_24 * fw) as i32;
+            iq[jz] = (z - crate::constants::PIO2_CHUNK_SCALE * fw) as i32;
             jz += 1;
             q0 += 24;
             iq[jz] = fw as i32;

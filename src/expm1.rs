@@ -23,7 +23,6 @@ const Q5: f64 = -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
 /// Computes exp(x) - 1 without cancellation near zero.
 pub(crate) const fn expm1(mut x: f64) -> f64 {
-    const TWO_POW_1023: f64 = crate::expi(2.0, (f64::MAX_EXP - 1) as isize);
     let hi: f64;
     let lo: f64;
     let k: i32;
@@ -36,7 +35,7 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
     let sign = (ui >> 63) as i32;
 
     /* filter out huge and non-finite argument */
-    if hx >= 0x4043687A {
+    if hx >= crate::get_high_word(56.0 * core::f64::consts::LN_2) {
         /* if |x|>=56*ln2 */
         if x.is_nan() {
             return x;
@@ -45,15 +44,15 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
             return -1.0;
         }
         if x > O_THRESHOLD {
-            x *= TWO_POW_1023;
+            x *= crate::constants::EXP_SCALE;
             return x;
         }
     }
 
     /* argument reduction */
-    if hx > 0x3fd62e42 {
+    if hx > crate::constants::HALF_LN_2_HIGH_WORD {
         /* if  |x| > 0.5 ln2 */
-        if hx < 0x3FF0A2B2 {
+        if hx < crate::constants::THREE_HALVES_LN_2_HIGH_WORD {
             /* and |x| < 1.5 ln2 */
             if sign == 0 {
                 hi = x - LN2_HI;
@@ -72,7 +71,7 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
         }
         x = hi - lo;
         c = (hi - x) - lo;
-    } else if hx < 0x3c900000 {
+    } else if hx < crate::get_high_word(crate::expi(2.0, -54)) {
         /* |x| < 2**-54, return x */
         return x;
     } else {
@@ -108,7 +107,7 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
         /* suffice to return exp(x)-1 */
         y = x - e + 1.0;
         if k == 1024 {
-            y = y * 2.0 * TWO_POW_1023;
+            y = y * 2.0 * crate::constants::EXP_SCALE;
         } else {
             y = y * twopk;
         }

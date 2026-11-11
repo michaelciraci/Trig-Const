@@ -90,7 +90,6 @@ pub const fn exp(x: f64) -> f64 {
 const fn exp_inner(mut x: f64) -> f64 {
     const LOG_MAX: f64 = crate::ln(f64::MAX);
     const LOG_MIN_NORMAL: f64 = crate::ln(f64::MIN_POSITIVE);
-    const TWO_POW_1023: f64 = crate::expi(2.0, (f64::MAX_EXP - 1) as isize);
 
     let hi: f64;
     let lo: f64;
@@ -109,7 +108,7 @@ const fn exp_inner(mut x: f64) -> f64 {
         }
         if x > LOG_MAX {
             /* overflow if x!=inf */
-            x *= TWO_POW_1023;
+            x *= crate::constants::EXP_SCALE;
             return x;
         }
         if x < LOG_MIN_NORMAL {
@@ -121,9 +120,9 @@ const fn exp_inner(mut x: f64) -> f64 {
     }
 
     /* argument reduction */
-    if hx > 0x3fd62e42 {
+    if hx > crate::constants::HALF_LN_2_HIGH_WORD {
         /* if |x| > 0.5 ln2 */
-        if hx >= 0x3ff0a2b2 {
+        if hx >= crate::constants::THREE_HALVES_LN_2_HIGH_WORD {
             /* if |x| >= 1.5 ln2 */
             k = (INVLN2 * x + HALF[sign as usize]) as i32;
         } else {
@@ -132,7 +131,7 @@ const fn exp_inner(mut x: f64) -> f64 {
         hi = x - k as f64 * LN2HI; /* k*ln2hi is exact here */
         lo = k as f64 * LN2LO;
         x = hi - lo;
-    } else if hx > 0x3e300000 {
+    } else if hx > crate::get_high_word(crate::expi(2.0, -28)) {
         /* if |x| > 2**-28 */
         k = 0;
         hi = x;

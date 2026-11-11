@@ -17,6 +17,7 @@ mod atan;
 mod atan2;
 mod atan_constants;
 mod atanh;
+mod constants;
 mod cos;
 mod exp;
 mod expm1;

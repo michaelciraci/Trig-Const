@@ -60,7 +60,7 @@ const fn cos_inner(x: f64) -> f64 {
     let ix = crate::get_high_word(x.abs());
 
     /* |x| ~< pi/4 */
-    if ix <= crate::get_high_word(core::f64::consts::FRAC_PI_4) {
+    if ix <= crate::constants::PI_OVER_FOUR_HIGH_WORD {
         if ix < crate::get_high_word(SMALL_ANGLE) {
             /* if x < 2**-27 * sqrt(2) */
             /* raise inexact if x != 0 */
@@ -72,7 +72,7 @@ const fn cos_inner(x: f64) -> f64 {
     }
 
     /* cos(Inf or NaN) is NaN */
-    if ix >= crate::get_high_word(f64::INFINITY) {
+    if ix >= crate::constants::INFINITY_HIGH_WORD {
         return f64::NAN;
     }
 

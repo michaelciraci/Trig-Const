@@ -53,8 +53,6 @@ const MEDIUM_LIMIT_HIGH_WORD: u32 = crate::get_high_word(crate::expi(2.0, 20) * 
 //
 // caller must handle the case when reduction is not needed: |x| ~<= pi/4 */
 pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
-    const TWO_POW_24: f64 = crate::expi(2.0, 24);
-
     let sign = (f64::to_bits(x) >> 63) as i32;
     let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
 
@@ -167,7 +165,7 @@ pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
     /*
      * all other (large) arguments
      */
-    if ix >= crate::get_high_word(f64::INFINITY) {
+    if ix >= crate::constants::INFINITY_HIGH_WORD {
         /* x is inf or NaN */
         let y0 = 0.0;
         let y1 = y0;
@@ -183,7 +181,7 @@ pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
     let mut i = 0;
     while i < 2 {
         tx[i] = z as i32 as f64;
-        z = (z - tx[i]) * TWO_POW_24;
+        z = (z - tx[i]) * crate::constants::PIO2_CHUNK_SCALE;
         i += 1;
     }
     tx[2] = z;
