@@ -77,7 +77,18 @@ const fn split(value: Bounds) -> SplitAngle {
 
 #[cfg(test)]
 mod tests {
-    use super::{ATAN_HALF, ATAN_INFINITY, ATAN_ONE, ATAN_THREE_HALVES};
+    use super::{atan_reciprocal, ATAN_HALF, ATAN_INFINITY, ATAN_ONE, ATAN_THREE_HALVES, SCALE};
+
+    #[test]
+    fn bounds_for_atan_half() {
+        let bounds = atan_reciprocal(2);
+
+        // atan(1/2) lies between 1/2 - 1/24 and 1/2.
+        // Bounds are integers scaled by SCALE.
+        assert!(bounds.lo > (SCALE / 24) * 11);
+        assert!(bounds.lo < bounds.hi);
+        assert!(bounds.hi < SCALE / 2);
+    }
 
     #[test]
     fn reference_angles_preserve_original_bits() {

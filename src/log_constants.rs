@@ -108,7 +108,18 @@ const fn split_with_hi(value: Bounds, hi: f64) -> SplitLog {
 
 #[cfg(test)]
 mod tests {
-    use super::{LN_TWO, LN_TWO_TRUNCATED, LOG2_E, LOG2_THREE_HALVES, LOG_SCALE};
+    use super::{ln_ratio, LN_TWO, LN_TWO_TRUNCATED, LOG2_E, LOG2_THREE_HALVES, LOG_SCALE, SCALE};
+
+    #[test]
+    fn bounds_for_ln_two() {
+        // ln_ratio(3) calculates ln((3 + 1) / (3 - 1)) = ln(2).
+        let bounds = ln_ratio(3);
+
+        // ln(2) lies between 1/2 and 3/4; bounds are scaled by SCALE.
+        assert!(bounds.lo > SCALE / 2);
+        assert!(bounds.lo < bounds.hi);
+        assert!(bounds.hi < (SCALE / 4) * 3);
+    }
 
     #[test]
     fn logarithm_splits_preserve_original_bits() {
