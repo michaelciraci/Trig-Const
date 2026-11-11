@@ -11,6 +11,7 @@
 //
 // Optimized by Bruce D. Evans. */
 use super::rem_pio2_large::rem_pio2_large;
+use core::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
 // #if FLT_EVAL_METHOD==0 || FLT_EVAL_METHOD==1
 // #define EPS DBL_EPSILON
@@ -36,6 +37,16 @@ const PIO2_2T: f64 = 2.02226624879595063154e-21; /* 0x3BA3198A, 0x2E037073 */
 const PIO2_3: f64 = 2.02226624871116645580e-21; /* 0x3BA3198A, 0x2E000000 */
 /// pi/2 - (PIO2_1+PIO2_2+PIO2_3)
 const PIO2_3T: f64 = 8.47842766036889956997e-32; /* 0x397B839A, 0x252049C1 */
+
+// Cutoffs compare the high word, so they include every value sharing that word.
+const THREE_PI_OVER_FOUR_HIGH_WORD: u32 = crate::get_high_word(3.0 * FRAC_PI_4);
+const FIVE_PI_OVER_FOUR_HIGH_WORD: u32 = crate::get_high_word(5.0 * FRAC_PI_4);
+// The original cutoffs include one additional high-word interval.
+const SEVEN_PI_OVER_FOUR_HIGH_WORD: u32 = crate::get_high_word(7.0 * FRAC_PI_4) + 1;
+const NINE_PI_OVER_FOUR_HIGH_WORD: u32 = crate::get_high_word(9.0 * FRAC_PI_4) + 1;
+const THREE_PI_OVER_TWO_HIGH_WORD: u32 = crate::get_high_word(3.0 * FRAC_PI_2);
+const TWO_PI_HIGH_WORD: u32 = crate::get_high_word(4.0 * FRAC_PI_2);
+const MEDIUM_LIMIT_HIGH_WORD: u32 = crate::get_high_word(crate::expi(2.0, 20) * FRAC_PI_2);
 
 // return the remainder of x rem pi/2 in y[0]+y[1]
 // use rem_pio2_large() for large x
@@ -81,13 +92,13 @@ pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
         (n, y0, y1)
     }
 
-    if ix <= 0x400f6a7a {
+    if ix <= FIVE_PI_OVER_FOUR_HIGH_WORD {
         /* |x| ~<= 5pi/4 */
         if (ix & 0xfffff) == 0x921fb {
             /* |x| ~= pi/2 or 2pi/2 */
             return medium(x, ix); /* cancellation -- use medium case */
         }
-        if ix <= 0x4002d97c {
+        if ix <= THREE_PI_OVER_FOUR_HIGH_WORD {
             /* |x| ~<= 3pi/4 */
             if sign == 0 {
                 let z = x - PIO2_1; /* one round good to 85 bits */
@@ -112,11 +123,11 @@ pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
             return (-2, y0, y1);
         }
     }
-    if ix <= 0x401c463b {
+    if ix <= NINE_PI_OVER_FOUR_HIGH_WORD {
         /* |x| ~<= 9pi/4 */
-        if ix <= 0x4015fdbc {
+        if ix <= SEVEN_PI_OVER_FOUR_HIGH_WORD {
             /* |x| ~<= 7pi/4 */
-            if ix == 0x4012d97c {
+            if ix == THREE_PI_OVER_TWO_HIGH_WORD {
                 /* |x| ~= 3pi/2 */
                 return medium(x, ix);
             }
@@ -132,7 +143,7 @@ pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
                 return (-3, y0, y1);
             }
         } else {
-            if ix == 0x401921fb {
+            if ix == TWO_PI_HIGH_WORD {
                 /* |x| ~= 4pi/2 */
                 return medium(x, ix);
             }
@@ -149,14 +160,14 @@ pub(crate) const fn rem_pio2(x: f64) -> (i32, f64, f64) {
             }
         }
     }
-    if ix < 0x413921fb {
+    if ix < MEDIUM_LIMIT_HIGH_WORD {
         /* |x| ~< 2^20*(pi/2), medium size */
         return medium(x, ix);
     }
     /*
      * all other (large) arguments
      */
-    if ix >= 0x7ff00000 {
+    if ix >= crate::get_high_word(f64::INFINITY) {
         /* x is inf or NaN */
         let y0 = 0.0;
         let y1 = y0;

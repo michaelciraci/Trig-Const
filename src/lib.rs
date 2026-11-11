@@ -262,22 +262,28 @@ pub const fn fabs(x: f64) -> f64 {
     x.abs()
 }
 
+/// Replaces the upper 32 bits of an f64's representation.
 const fn with_set_high_word(f: f64, hi: u32) -> f64 {
     let mut tmp = f.to_bits();
     tmp &= u32::MAX as u64;
     tmp |= (hi as u64) << u32::BITS;
     f64::from_bits(tmp)
 }
+
+/// Replaces the lower 32 bits of an f64's representation.
 const fn with_set_low_word(f: f64, lo: u32) -> f64 {
     let mut tmp = f.to_bits();
     tmp &= !(u32::MAX as u64);
     tmp |= lo as u64;
     f64::from_bits(tmp)
 }
+
+/// Returns the upper 32 bits of an f64's representation.
 const fn get_high_word(x: f64) -> u32 {
     (x.to_bits() >> u32::BITS) as u32
 }
 
+/// Returns the lower 32 bits of an f64's representation.
 const fn get_low_word(x: f64) -> u32 {
     x.to_bits() as u32
 }

@@ -68,8 +68,8 @@
 use super::scalbn;
 
 const HALF: [f64; 2] = [0.5, -0.5];
-const LN2HI: f64 = 6.93147180369123816490e-01; /* 0x3fe62e42, 0xfee00000 */
-const LN2LO: f64 = 1.90821492927058770002e-10; /* 0x3dea39ef, 0x35793c76 */
+const LN2HI: f64 = crate::log_constants::LN_TWO_TRUNCATED.hi;
+const LN2LO: f64 = crate::log_constants::LN_TWO_TRUNCATED.lo;
 const INVLN2: f64 = core::f64::consts::LOG2_E;
 // Fitted coefficients for the reduced-argument exponential.
 const P1: f64 = 1.66666666666666019037e-01; /* 0x3FC55555, 0x5555553E */
