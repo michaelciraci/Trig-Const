@@ -123,31 +123,40 @@ mod tests {
 
     #[test]
     fn logarithm_splits_preserve_original_bits() {
-        for (value, hi, lo) in [
-            (
-                LN_TWO,
-                6.93147182464599609375e-1_f64,
-                -1.90465429995776804525e-9_f64,
-            ),
-            (
-                LN_TWO_TRUNCATED,
-                6.93147180369123816490e-1_f64,
-                1.90821492927058770002e-10_f64,
-            ),
-            (LOG2_E, 1.44269502162933349609, 1.92596299112661746887e-8),
-            (
-                LOG_SCALE,
-                9.61796700954437255859e-1,
-                -7.02846165095275826516e-9,
-            ),
-            (
-                LOG2_THREE_HALVES,
-                5.84962487220764160156e-1,
-                1.35003920212974897128e-8,
-            ),
-        ] {
-            assert_eq!(value.hi.to_bits(), hi.to_bits());
-            assert_eq!(value.lo.to_bits(), lo.to_bits());
-        }
+        assert_eq!(LN_TWO.hi.to_bits(), 6.93147182464599609375e-1_f64.to_bits());
+        assert_eq!(
+            LN_TWO.lo.to_bits(),
+            (-1.90465429995776804525e-9_f64).to_bits()
+        );
+
+        assert_eq!(
+            LN_TWO_TRUNCATED.hi.to_bits(),
+            6.93147180369123816490e-1_f64.to_bits()
+        );
+        assert_eq!(
+            LN_TWO_TRUNCATED.lo.to_bits(),
+            1.90821492927058770002e-10_f64.to_bits()
+        );
+
+        assert_eq!(LOG2_E.hi.to_bits(), 1.44269502162933349609_f64.to_bits());
+        assert_eq!(LOG2_E.lo.to_bits(), 1.92596299112661746887e-8_f64.to_bits());
+
+        assert_eq!(
+            LOG_SCALE.hi.to_bits(),
+            9.61796700954437255859e-1_f64.to_bits()
+        );
+        assert_eq!(
+            LOG_SCALE.lo.to_bits(),
+            (-7.02846165095275826516e-9_f64).to_bits()
+        );
+
+        assert_eq!(
+            LOG2_THREE_HALVES.hi.to_bits(),
+            5.84962487220764160156e-1_f64.to_bits()
+        );
+        assert_eq!(
+            LOG2_THREE_HALVES.lo.to_bits(),
+            1.35003920212974897128e-8_f64.to_bits()
+        );
     }
 }
