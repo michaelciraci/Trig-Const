@@ -34,7 +34,7 @@ fn main() {
     );
     let tests = [
         CompareArgs {
-            name: "acos".to_string(),
+            name: "acos",
             start: -1.0,
             stop: 1.0,
             step: STEP,
@@ -42,7 +42,7 @@ fn main() {
             const_fn: |x: f64| trig_const::acos(x),
         },
         CompareArgs {
-            name: "acosh".to_string(),
+            name: "acosh",
             start: 1.0,
             stop: 100.0,
             step: STEP,
@@ -50,7 +50,7 @@ fn main() {
             const_fn: |x: f64| trig_const::acosh(x),
         },
         CompareArgs {
-            name: "asin".to_string(),
+            name: "asin",
             start: -1.0,
             stop: 1.0,
             step: STEP,
@@ -58,7 +58,7 @@ fn main() {
             const_fn: |x: f64| trig_const::asin(x),
         },
         CompareArgs {
-            name: "asinh".to_string(),
+            name: "asinh",
             start: 1.0,
             stop: 100.0,
             step: STEP,
@@ -66,7 +66,7 @@ fn main() {
             const_fn: |x: f64| trig_const::asinh(x),
         },
         CompareArgs {
-            name: "atan".to_string(),
+            name: "atan",
             start: -8.0 * PI,
             stop: 8.0 * PI,
             step: STEP,
@@ -74,7 +74,7 @@ fn main() {
             const_fn: |x: f64| trig_const::atan(x),
         },
         CompareArgs {
-            name: "atanh".to_string(),
+            name: "atanh",
             start: -1.0 + STEP,
             stop: 1.0 - STEP,
             step: STEP,
@@ -82,7 +82,7 @@ fn main() {
             const_fn: |x| trig_const::atanh(x),
         },
         CompareArgs {
-            name: "cos".to_string(),
+            name: "cos",
             start: -8.0 * PI,
             stop: 8.0 * PI,
             step: STEP,
@@ -90,7 +90,7 @@ fn main() {
             const_fn: |x: f64| trig_const::cos(x),
         },
         CompareArgs {
-            name: "cosh".to_string(),
+            name: "cosh",
             start: -4.0 * PI,
             stop: 4.0 * PI,
             step: STEP,
@@ -98,7 +98,7 @@ fn main() {
             const_fn: |x| trig_const::cosh(x),
         },
         CompareArgs {
-            name: "ln".to_string(),
+            name: "ln",
             start: 0.001,
             stop: 100.0,
             step: STEP,
@@ -106,7 +106,7 @@ fn main() {
             const_fn: |x: f64| trig_const::ln(x),
         },
         CompareArgs {
-            name: "exp".to_string(),
+            name: "exp",
             start: -10.0,
             stop: 10.0,
             step: STEP,
@@ -114,7 +114,7 @@ fn main() {
             const_fn: |x: f64| trig_const::exp(x),
         },
         CompareArgs {
-            name: "fabs".to_string(),
+            name: "fabs",
             start: -10.0,
             stop: 10.0,
             step: STEP,
@@ -122,7 +122,7 @@ fn main() {
             const_fn: |x: f64| trig_const::fabs(x),
         },
         CompareArgs {
-            name: "floor".to_string(),
+            name: "floor",
             start: -10.0,
             stop: 10.0,
             step: STEP,
@@ -130,7 +130,7 @@ fn main() {
             const_fn: |x: f64| trig_const::floor(x),
         },
         CompareArgs {
-            name: "sin".to_string(),
+            name: "sin",
             start: -8.0 * PI,
             stop: 8.0 * PI,
             step: STEP,
@@ -138,7 +138,7 @@ fn main() {
             const_fn: |x: f64| trig_const::sin(x),
         },
         CompareArgs {
-            name: "sinh".to_string(),
+            name: "sinh",
             start: -4.0 * PI,
             stop: 4.0 * PI,
             step: STEP,
@@ -146,7 +146,7 @@ fn main() {
             const_fn: |x| trig_const::sinh(x),
         },
         CompareArgs {
-            name: "sqrt".to_string(),
+            name: "sqrt",
             start: 0.0,
             stop: 10.0,
             step: STEP,
@@ -154,7 +154,7 @@ fn main() {
             const_fn: |x: f64| trig_const::sqrt(x),
         },
         CompareArgs {
-            name: "tan".to_string(),
+            name: "tan",
             start: -8.0 * PI,
             stop: 8.0 * PI,
             step: STEP,
@@ -216,7 +216,7 @@ fn float_loop(start: f64, stop: f64, step: f64) -> impl Iterator<Item = f64> {
 }
 
 struct CompareArgs {
-    name: String,
+    name: &'static str,
     start: f64,
     stop: f64,
     step: f64,
