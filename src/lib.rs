@@ -63,12 +63,7 @@ pub(crate) const PIO2_LO: f64 = atan_constants::ATAN_INFINITY.lo;
 /// float_eq(COT_PI_4, 1.0);
 /// ```
 pub const fn cot(x: f64) -> f64 {
-    let sin_calc = sin(x);
-    if sin_calc == 0.0 {
-        f64::INFINITY
-    } else {
-        cos(x) / sin_calc
-    }
+    cos(x) / sin(x)
 }
 
 /// Secant
@@ -97,12 +92,7 @@ pub const fn sec(x: f64) -> f64 {
 /// assert_eq!(CSC_PI_2, 1.0);
 /// ```
 pub const fn csc(x: f64) -> f64 {
-    let sin_calc = sin(x);
-    if sin_calc == 0.0 {
-        f64::INFINITY
-    } else {
-        1.0 / sin_calc
-    }
+    1.0 / sin(x)
 }
 
 /// Hyperbolic Sine
@@ -167,6 +157,13 @@ const fn cosh_inner(x: f64) -> f64 {
 
 /// x^pow
 pub const fn expi(x: f64, mut pow: isize) -> f64 {
+    if x == 1.0 {
+        return 1.0;
+    }
+    if x == -1.0 {
+        return if pow & 1 == 0 { 1.0 } else { -1.0 };
+    }
+
     let mut o = 1.0;
 
     while pow > 0 {
