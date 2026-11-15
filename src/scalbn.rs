@@ -3,7 +3,6 @@ const BITS: u32 = u64::BITS;
 const EXP_BITS: u32 = BITS - SIG_BITS - 1;
 const EXP_SAT: u32 = (1 << EXP_BITS) - 1;
 const EXP_BIAS: u32 = EXP_SAT >> 1;
-const SIG_MASK: u64 = (1_u64 << SIG_BITS) - 1;
 const EXP_MAX: i32 = EXP_BIAS as i32;
 const EXP_MIN: i32 = -(EXP_MAX - 1);
 
@@ -24,8 +23,6 @@ const EXP_MIN: i32 = -(EXP_MAX - 1);
 /// > If the calculation does not overflow or underflow, the returned value is exact and
 /// > independent of the current rounding direction mode.
 pub(crate) const fn scalbn(mut x: f64, mut n: i32) -> f64 {
-    let zero = 0;
-
     // Bits including the implicit bit
     let sig_total_bits = SIG_BITS + 1;
 
@@ -34,13 +31,13 @@ pub(crate) const fn scalbn(mut x: f64, mut n: i32) -> f64 {
     let exp_min = EXP_MIN;
 
     // 2 ^ Emax, maximum positive with null significand (0x1p1023 for f64)
-    let f_exp_max = from_parts(false, EXP_BIAS << 1, zero);
+    let f_exp_max = from_biased_exponent(EXP_BIAS << 1);
 
     // 2 ^ Emin, minimum positive normal with null significand (0x1p-1022 for f64)
-    let f_exp_min = from_parts(false, 1, zero);
+    let f_exp_min = from_biased_exponent(1);
 
     // 2 ^ sig_total_bits, multiplier to normalize subnormals (0x1p53 for f64)
-    let f_pow_subnorm = from_parts(false, sig_total_bits + EXP_BIAS, zero);
+    let f_pow_subnorm = from_biased_exponent(sig_total_bits + EXP_BIAS);
 
     /*
      * The goal is to multiply `x` by a scale factor that applies `n`. However, there are cases
@@ -64,79 +61,76 @@ pub(crate) const fn scalbn(mut x: f64, mut n: i32) -> f64 {
             }
         }
     } else if n < exp_min {
-        // When scaling toward 0, the prescaling is limited to a value that does not allow `x` to
-        // go subnormal. This avoids double rounding.
-        if BITS > 16 {
-            // `mul` s.t. `!(x * mul).is_subnormal() ∀ x`
-            let mul = f_exp_min * f_pow_subnorm;
-            let add = -exp_min - sig_total_bits as i32;
+        // Prescale to avoid rounding subnormal results twice.
+        let mul = f_exp_min * f_pow_subnorm;
+        let add = -exp_min - sig_total_bits as i32;
 
-            // Worst case negative `n`: scale f64::MAX to a subnormal result.
-            // This must be reachable by three scaling multiplications (two here and one final).
-            debug_assert!(-exp_min + SIG_BITS as i32 + exp_max <= add * 2 + -exp_min);
+        // Two prescales and the final factor cover f64's range.
+        debug_assert!(-exp_min + SIG_BITS as i32 + exp_max <= add * 2 + -exp_min);
 
+        x *= mul;
+        n += add;
+
+        if n < exp_min {
             x *= mul;
             n += add;
 
             if n < exp_min {
-                x *= mul;
-                n += add;
-
-                if n < exp_min {
-                    n = exp_min;
-                }
-            }
-        } else {
-            // `f16` is unique compared to other float types in that the difference between the
-            // minimum exponent and the significand bits (`add = -exp_min - sig_total_bits`) is
-            // small, only three. The above method depend on decrementing `n` by `add` two times;
-            // for other float types this works out because `add` is a substantial fraction of
-            // the exponent range. For `f16`, however, 3 is relatively small compared to the
-            // exponent range (which is 39), so that requires ~10 prescale rounds rather than two.
-            //
-            // Work around this by using a different algorithm that calculates the prescale
-            // dynamically based on the maximum possible value. This adds more operations per round
-            // since it needs to construct the scale, but works better in the general case.
-            let add = -clamp(n + sig_total_bits as i32, exp_min, sig_total_bits as i32);
-            let mul = from_parts(false, (EXP_BIAS as i32 - add) as u32, zero);
-
-            x *= mul;
-            n += add;
-
-            if n < exp_min {
-                let add = -clamp(n + sig_total_bits as i32, exp_min, sig_total_bits as i32);
-                let mul = from_parts(false, (EXP_BIAS as i32 - add) as u32, zero);
-
-                x *= mul;
-                n += add;
-
-                if n < exp_min {
-                    n = exp_min;
-                }
+                n = exp_min;
             }
         }
     }
 
-    let scale = from_parts(false, (EXP_BIAS as i32 + n) as u32, zero);
+    let scale = from_biased_exponent((EXP_BIAS as i32 + n) as u32);
     x * scale
 }
 
-const fn from_parts(negative: bool, exponent: u32, significand: i32) -> f64 {
-    let sign = if negative { 1_u64 } else { 0 };
-    f64::from_bits(
-        (sign << (BITS - 1))
-            | ((exponent as u64 & EXP_SAT as u64) << SIG_BITS)
-            | (significand as u64 & SIG_MASK),
-    )
+const fn from_biased_exponent(exponent: u32) -> f64 {
+    f64::from_bits((exponent as u64 & EXP_SAT as u64) << SIG_BITS)
 }
 
-const fn clamp(x: i32, min: i32, max: i32) -> i32 {
-    assert!(min <= max);
-    if x < min {
-        min
-    } else if x > max {
-        max
-    } else {
-        x
+#[cfg(test)]
+mod tests {
+    use super::scalbn;
+
+    const MIN_SUBNORMAL: f64 = f64::from_bits(1);
+
+    #[test]
+    fn scales_across_normal_and_subnormal_range() {
+        assert_eq!(
+            (const { scalbn(f64::MIN_POSITIVE, -1) }),
+            f64::MIN_POSITIVE / 2.0
+        );
+        assert_eq!((const { scalbn(MIN_SUBNORMAL, 52) }), f64::MIN_POSITIVE);
+
+        // Halfway results round to the even subnormal.
+        assert_eq!((const { scalbn(f64::from_bits(3), -1) }).to_bits(), 2);
+        assert_eq!((const { scalbn(f64::from_bits(5), -1) }).to_bits(), 2);
+        assert_eq!(
+            (const { scalbn(-MIN_SUBNORMAL, -1) }).to_bits(),
+            (-0.0_f64).to_bits()
+        );
+    }
+
+    #[test]
+    fn scales_extreme_exponents() {
+        const TWO_POW_1023: f64 = f64::from_bits(0x7fe0_0000_0000_0000);
+        assert_eq!((const { scalbn(MIN_SUBNORMAL, 2097) }), TWO_POW_1023);
+        assert_eq!((const { scalbn(f64::MAX, -2097) }).to_bits(), 2);
+        assert_eq!((const { scalbn(f64::MAX, -2098) }), MIN_SUBNORMAL);
+        assert_eq!((const { scalbn(f64::MAX, -2099) }).to_bits(), 0);
+        assert_eq!((const { scalbn(MIN_SUBNORMAL, i32::MAX) }), f64::INFINITY);
+        assert_eq!((const { scalbn(f64::MAX, i32::MIN) }).to_bits(), 0);
+    }
+
+    #[test]
+    fn preserves_special_values() {
+        for exponent in [i32::MIN, -1, 0, 1, i32::MAX] {
+            assert_eq!(scalbn(0.0, exponent).to_bits(), 0.0_f64.to_bits());
+            assert_eq!(scalbn(-0.0, exponent).to_bits(), (-0.0_f64).to_bits());
+            assert_eq!(scalbn(f64::INFINITY, exponent), f64::INFINITY);
+            assert_eq!(scalbn(f64::NEG_INFINITY, exponent), f64::NEG_INFINITY);
+            assert!(scalbn(f64::NAN, exponent).is_nan());
+        }
     }
 }
