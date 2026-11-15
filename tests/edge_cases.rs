@@ -8,9 +8,8 @@ fn reciprocal_trig_preserves_zero_sign() {
     assert_eq!((const { csc(0.0) }), f64::INFINITY);
     assert_eq!((const { csc(-0.0) }), f64::NEG_INFINITY);
 
-    let negative_zero = std::hint::black_box(-0.0);
-    assert_eq!(cot(negative_zero), f64::NEG_INFINITY);
-    assert_eq!(csc(negative_zero), f64::NEG_INFINITY);
+    assert_eq!(cot(-0.0), f64::NEG_INFINITY);
+    assert_eq!(csc(-0.0), f64::NEG_INFINITY);
 }
 
 #[test]
@@ -22,9 +21,8 @@ fn expi_unit_bases_support_extreme_exponents() {
     assert_eq!((const { expi(-1.0, 0) }), 1.0);
     assert_eq!((const { expi(-1.0, -3) }), -1.0);
 
-    let exponent = std::hint::black_box(isize::MIN);
-    assert_eq!(expi(1.0, exponent), 1.0);
-    assert_eq!(expi(-1.0, exponent), 1.0);
+    assert_eq!(expi(1.0, isize::MIN), 1.0);
+    assert_eq!(expi(-1.0, isize::MIN), 1.0);
 }
 
 #[test]
