@@ -23,60 +23,42 @@ const EXP_MIN: i32 = -(EXP_MAX - 1);
 /// > If the calculation does not overflow or underflow, the returned value is exact and
 /// > independent of the current rounding direction mode.
 pub(crate) const fn scalbn(mut x: f64, mut n: i32) -> f64 {
-    // Bits including the implicit bit
-    let sig_total_bits = SIG_BITS + 1;
+    const SIG_TOTAL_BITS: u32 = SIG_BITS + 1;
+    const MAX_SCALE: f64 = from_biased_exponent(EXP_BIAS << 1);
+    const MIN_SCALE: f64 = f64::MIN_POSITIVE;
+    const SUBNORMAL_SCALE: f64 = from_biased_exponent(SIG_TOTAL_BITS + EXP_BIAS);
+    const PRESCALE: f64 = MIN_SCALE * SUBNORMAL_SCALE;
+    const PRESCALE_SHIFT: i32 = -EXP_MIN - SIG_TOTAL_BITS as i32;
 
-    // Maximum and minimum values when biased
-    let exp_max = EXP_MAX;
-    let exp_min = EXP_MIN;
-
-    // 2 ^ Emax, maximum positive with null significand (0x1p1023 for f64)
-    let f_exp_max = from_biased_exponent(EXP_BIAS << 1);
-
-    // 2 ^ Emin, minimum positive normal with null significand (0x1p-1022 for f64)
-    let f_exp_min = from_biased_exponent(1);
-
-    // 2 ^ sig_total_bits, multiplier to normalize subnormals (0x1p53 for f64)
-    let f_pow_subnorm = from_biased_exponent(sig_total_bits + EXP_BIAS);
-
-    /*
-     * The goal is to multiply `x` by a scale factor that applies `n`. However, there are cases
-     * where `2^n` is not representable by `F` but the result should be, e.g. `x = 2^Emin` with
-     * `n = -EMin + 2` (one out of range of 2^Emax). To get around this, reduce the magnitude of
-     * the final scale operation by prescaling by the max/min power representable by `F`.
-     */
-
-    if n > exp_max {
+    // Scale in stages when 2^n cannot be represented as an f64.
+    if n > EXP_MAX {
         // Worst case positive `n`: scale the minimum subnormal to near f64::MAX.
         // This can be reached by three scaling multiplications (two here and one final).
-        debug_assert!(-exp_min + SIG_BITS as i32 + exp_max <= exp_max * 3);
+        debug_assert!(-EXP_MIN + SIG_BITS as i32 + EXP_MAX <= EXP_MAX * 3);
 
-        x *= f_exp_max;
-        n -= exp_max;
-        if n > exp_max {
-            x *= f_exp_max;
-            n -= exp_max;
-            if n > exp_max {
-                n = exp_max;
+        x *= MAX_SCALE;
+        n -= EXP_MAX;
+        if n > EXP_MAX {
+            x *= MAX_SCALE;
+            n -= EXP_MAX;
+            if n > EXP_MAX {
+                n = EXP_MAX;
             }
         }
-    } else if n < exp_min {
+    } else if n < EXP_MIN {
         // Prescale to avoid rounding subnormal results twice.
-        let mul = f_exp_min * f_pow_subnorm;
-        let add = -exp_min - sig_total_bits as i32;
-
         // Two prescales and the final factor cover f64's range.
-        debug_assert!(-exp_min + SIG_BITS as i32 + exp_max <= add * 2 + -exp_min);
+        debug_assert!(-EXP_MIN + SIG_BITS as i32 + EXP_MAX <= PRESCALE_SHIFT * 2 + -EXP_MIN);
 
-        x *= mul;
-        n += add;
+        x *= PRESCALE;
+        n += PRESCALE_SHIFT;
 
-        if n < exp_min {
-            x *= mul;
-            n += add;
+        if n < EXP_MIN {
+            x *= PRESCALE;
+            n += PRESCALE_SHIFT;
 
-            if n < exp_min {
-                n = exp_min;
+            if n < EXP_MIN {
+                n = EXP_MIN;
             }
         }
     }
