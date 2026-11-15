@@ -44,6 +44,8 @@ use crate::{k_cos::k_cos, k_sin::k_sin, rem_pio2::rem_pio2};
 
 /// Cosine
 ///
+/// `x` is specified in radians.
+///
 /// ```
 /// # use trig_const::cos;
 /// # use core::f64::consts::PI;

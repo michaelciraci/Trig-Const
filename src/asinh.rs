@@ -7,8 +7,8 @@ use crate::{ln, log1p::log1p, sqrt};
 /// Is defined as `sgn(x)*log(|x|+sqrt(x*x+1))`.
 /// ```
 /// # use trig_const::asinh;
-/// const ASINH_1: f64 = asinh(0.0);
-/// assert_eq!(ASINH_1, 0.0);
+/// const ASINH_0: f64 = asinh(0.0);
+/// assert_eq!(ASINH_0, 0.0);
 /// ```
 pub const fn asinh(x: f64) -> f64 {
     nightly_exp!(asinh, asinh_inner, x)

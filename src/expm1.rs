@@ -14,7 +14,7 @@ const O_THRESHOLD: f64 = crate::ln(f64::MAX);
 const LN2_HI: f64 = crate::log_constants::LN_TWO_TRUNCATED.hi;
 const LN2_LO: f64 = crate::log_constants::LN_TWO_TRUNCATED.lo;
 const INVLN2: f64 = core::f64::consts::LOG2_E;
-/* Scaled Q's: Qn_here = 2**n * Qn_above, for R(2*z) where z = hxs = x*x/2: */
+// Scaled polynomial coefficients for the reduced-argument approximation.
 const Q1: f64 = -3.33333333333331316428e-02; /* BFA11111 111110F4 */
 const Q2: f64 = 1.58730158725481460165e-03; /* 3F5A01A0 19FE5585 */
 const Q3: f64 = -7.93650757867487942473e-05; /* BF14CE19 9EAADBB7 */

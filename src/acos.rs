@@ -37,6 +37,8 @@ use super::{asin::asin_correction, sqrt, PIO2_HI, PIO2_LO};
 
 /// Arccosine
 ///
+/// Returns an angle in radians, or NaN if `x` is outside [-1, 1].
+///
 /// ```
 /// # use trig_const::acos;
 /// # use core::f64::consts::PI;

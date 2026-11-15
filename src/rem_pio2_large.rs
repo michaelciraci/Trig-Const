@@ -213,7 +213,7 @@ const PIO2: [f64; 8] = [
 //      ih      integer. If >0 it indicates q[] is >= 0.5, hence
 //              it also indicates the *sign* of the result.
 
-/// Return the last three digits of N with y = x - N*pi/2
+/// Return N modulo 8 with y = x - N*pi/2
 /// so that |y| < pi/2.
 ///
 /// The method is to compute the integer (mod 8) and fraction parts of

@@ -42,6 +42,8 @@ use crate::{atan, fabs, PIO2_LO};
 
 /// Arctan2
 ///
+/// Returns the angle of the point (`x`, `y`) in radians, in [-π, π].
+///
 /// ```
 /// # use trig_const::atan2;
 /// # use core::f64::consts::PI;

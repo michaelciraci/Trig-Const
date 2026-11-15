@@ -59,8 +59,9 @@ const HALF_HIGH_WORD: i32 = get_high_word(0.5) as i32;
 const INFINITY_HIGH_WORD: i32 = crate::constants::INFINITY_HIGH_WORD as i32;
 const MIN_NORMAL_HIGH_WORD: i32 = get_high_word(f64::MIN_POSITIVE) as i32;
 const EVEN_INTEGER_HIGH_WORD: i32 = get_high_word(SUBNORMAL_SCALE) as i32;
-const LARGE_POWER_HIGH_WORD: i32 = get_high_word(crate::expi(2.0, (i32::BITS - 1) as isize)) as i32;
-const HUGE_POWER_HIGH_WORD: i32 = get_high_word(crate::expi(2.0, u64::BITS as isize)) as i32;
+// Exponent magnitudes that trigger the large-power cases in pow_inner.
+const LARGE_POWER_HIGH_WORD: i32 = get_high_word(crate::expi(2.0, 31)) as i32;
+const HUGE_POWER_HIGH_WORD: i32 = get_high_word(crate::expi(2.0, 64)) as i32;
 const SQRT_THREE_HALVES_FRACTION: i32 = get_high_word(sqrt(3.0 / 2.0)) as i32 & HIGH_FRACTION_MASK;
 const SQRT_THREE_FRACTION: i32 = get_high_word(sqrt(3.0)) as i32 & HIGH_FRACTION_MASK;
 const EXP2_OVERFLOW_HIGH_WORD: i32 = get_high_word(f64::MAX_EXP as f64) as i32;

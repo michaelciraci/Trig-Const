@@ -63,10 +63,12 @@ pub(crate) const fn asin_correction(z: f64) -> f64 {
 
 /// Arcsine
 ///
+/// Returns an angle in radians, or NaN if `x` is outside [-1, 1].
+///
 /// ```
 /// # use trig_const::asin;
-/// const ASIN_PI: f64 = asin(0.0);
-/// assert_eq!(ASIN_PI, 0.0);
+/// const ASIN_0: f64 = asin(0.0);
+/// assert_eq!(ASIN_0, 0.0);
 /// ```
 pub const fn asin(x: f64) -> f64 {
     nightly_exp!(asin, asin_inner, x)
