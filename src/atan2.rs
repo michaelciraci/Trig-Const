@@ -48,7 +48,6 @@ use crate::{atan, fabs, PIO2_LO};
 /// const ATAN2_0_1: f64 = atan2(0.0, 1.0);
 /// assert_eq!(ATAN2_0_1, 0.0);
 /// ```
-#[must_use]
 pub const fn atan2(y: f64, x: f64) -> f64 {
     nightly_exp!(atan2, atan2_inner, y, x)
 }

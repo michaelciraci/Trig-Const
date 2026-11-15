@@ -68,7 +68,6 @@ pub(crate) const fn asin_correction(z: f64) -> f64 {
 /// const ASIN_PI: f64 = asin(0.0);
 /// assert_eq!(ASIN_PI, 0.0);
 /// ```
-#[must_use]
 pub const fn asin(x: f64) -> f64 {
     nightly_exp!(asin, asin_inner, x)
 }

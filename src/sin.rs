@@ -50,7 +50,6 @@ use crate::{k_cos::k_cos, k_sin::k_sin, rem_pio2::rem_pio2};
 /// const SIN_PI: f64 = sin(PI);
 /// float_eq(SIN_PI, 0.0);
 /// ```
-#[must_use]
 pub const fn sin(x: f64) -> f64 {
     nightly_exp!(sin, sin_inner, x)
 }

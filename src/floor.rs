@@ -14,7 +14,6 @@ const EXP_SAT: u32 = (1 << EXP_BITS) - 1;
 const EXP_BIAS: u32 = EXP_SAT >> 1;
 const SIG_MASK: u64 = (1_u64 << SIG_BITS) - 1;
 
-#[must_use]
 pub const fn floor(x: f64) -> f64 {
     nightly_exp!(floor, floor_inner, x)
 }

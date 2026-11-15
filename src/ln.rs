@@ -60,7 +60,6 @@
  * to produce the hexadecimal values shown.
  */
 /// Computes natural log using a port from Rust's `libm`
-#[must_use]
 pub const fn ln(x: f64) -> f64 {
     #[cfg(feature = "nightly")]
     {

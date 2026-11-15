@@ -13,7 +13,6 @@ use super::{log1p::log1p, sqrt};
 /// const ACOSH_1: f64 = acosh(1.0);
 /// assert_eq!(ACOSH_1, 0.0);
 /// ```
-#[must_use]
 pub const fn acosh(x: f64) -> f64 {
     nightly_exp!(acosh, acosh_inner, x)
 }

@@ -61,7 +61,6 @@ const AT: [f64; 11] = [
 /// const ATAN_1: f64 = atan(1.0);
 /// assert_eq!(ATAN_1, PI / 4.0);
 /// ```
-#[must_use]
 pub const fn atan(x: f64) -> f64 {
     nightly_exp!(atan, atan_inner, x)
 }

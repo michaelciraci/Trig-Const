@@ -43,7 +43,6 @@ use super::{asin::asin_correction, sqrt, PIO2_HI, PIO2_LO};
 /// const ACOS_1: f64 = acos(1.0);
 /// assert_eq!(ACOS_1, 0.0);
 /// ```
-#[must_use]
 pub const fn acos(x: f64) -> f64 {
     nightly_exp!(acos, acos_inner, x)
 }

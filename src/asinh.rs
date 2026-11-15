@@ -10,7 +10,6 @@ use crate::{ln, log1p::log1p, sqrt};
 /// const ASINH_1: f64 = asinh(0.0);
 /// assert_eq!(ASINH_1, 0.0);
 /// ```
-#[must_use]
 pub const fn asinh(x: f64) -> f64 {
     nightly_exp!(asinh, asinh_inner, x)
 }

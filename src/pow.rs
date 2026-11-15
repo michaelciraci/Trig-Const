@@ -74,7 +74,6 @@ const EXP2_ZERO_HIGH_WORD: i32 = get_high_word(ZERO_ROUNDING_EXPONENT as f64) as
 /// let _a = pow(10.0, 2.5);
 /// assert_eq!(pow(10.0, 2.0), 100.0);
 /// ```
-#[must_use]
 pub const fn pow(x: f64, y: f64) -> f64 {
     #[cfg(feature = "nightly")]
     {

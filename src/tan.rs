@@ -43,7 +43,6 @@ use super::{k_tan::k_tan, rem_pio2::rem_pio2};
 /// The tangent of `x` (f64).
 ///
 /// `x` is specified in radians.
-#[must_use]
 pub const fn tan(x: f64) -> f64 {
     nightly_exp!(tan, tan_inner, x)
 }
