@@ -48,22 +48,19 @@ pub const fn tan(x: f64) -> f64 {
 }
 
 const fn tan_inner(x: f64) -> f64 {
-    // let x1p120 = f32::from_bits(0x7b800000); // 0x1p120f === 2 ^ 120
-
-    let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
+    const SMALL_ANGLE: f64 = crate::expi(2.0, -27);
+    let ix = crate::get_high_word(x.abs());
     /* |x| ~< pi/4 */
-    if ix <= 0x3fe921fb {
-        if ix < 0x3e400000 {
+    if ix <= crate::constants::PI_OVER_FOUR_HIGH_WORD {
+        if ix < crate::get_high_word(SMALL_ANGLE) {
             /* |x| < 2**-27 */
-            /* raise inexact if x!=0 and underflow if subnormal */
-            // force_eval!(if ix < 0x00100000 { x / x1p120 as f64 } else { x + x1p120 as f64 });
             return x;
         }
         return k_tan(x, 0.0, 0);
     }
 
     /* tan(Inf or NaN) is NaN */
-    if ix >= 0x7ff00000 {
+    if ix >= crate::constants::INFINITY_HIGH_WORD {
         return f64::NAN;
     }
 

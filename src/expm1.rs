@@ -10,11 +10,11 @@
  * ====================================================
  */
 
-const O_THRESHOLD: f64 = 7.09782712893383973096e+02; /* 0x40862E42, 0xFEFA39EF */
-const LN2_HI: f64 = 6.93147180369123816490e-01; /* 0x3fe62e42, 0xfee00000 */
-const LN2_LO: f64 = 1.90821492927058770002e-10; /* 0x3dea39ef, 0x35793c76 */
-const INVLN2: f64 = 1.44269504088896338700e+00; /* 0x3ff71547, 0x652b82fe */
-/* Scaled Q's: Qn_here = 2**n * Qn_above, for R(2*z) where z = hxs = x*x/2: */
+const O_THRESHOLD: f64 = crate::ln(f64::MAX);
+const LN2_HI: f64 = crate::log_constants::LN_TWO_TRUNCATED.hi;
+const LN2_LO: f64 = crate::log_constants::LN_TWO_TRUNCATED.lo;
+const INVLN2: f64 = core::f64::consts::LOG2_E;
+// Scaled polynomial coefficients for the reduced-argument approximation.
 const Q1: f64 = -3.33333333333331316428e-02; /* BFA11111 111110F4 */
 const Q2: f64 = 1.58730158725481460165e-03; /* 3F5A01A0 19FE5585 */
 const Q3: f64 = -7.93650757867487942473e-05; /* BF14CE19 9EAADBB7 */
@@ -35,7 +35,7 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
     let sign = (ui >> 63) as i32;
 
     /* filter out huge and non-finite argument */
-    if hx >= 0x4043687A {
+    if hx >= crate::get_high_word(56.0 * core::f64::consts::LN_2) {
         /* if |x|>=56*ln2 */
         if x.is_nan() {
             return x;
@@ -44,15 +44,15 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
             return -1.0;
         }
         if x > O_THRESHOLD {
-            x *= f64::from_bits(0x7fe0000000000000);
+            x *= crate::constants::EXP_SCALE;
             return x;
         }
     }
 
     /* argument reduction */
-    if hx > 0x3fd62e42 {
+    if hx > crate::constants::HALF_LN_2_HIGH_WORD {
         /* if  |x| > 0.5 ln2 */
-        if hx < 0x3FF0A2B2 {
+        if hx < crate::constants::THREE_HALVES_LN_2_HIGH_WORD {
             /* and |x| < 1.5 ln2 */
             if sign == 0 {
                 hi = x - LN2_HI;
@@ -71,7 +71,7 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
         }
         x = hi - lo;
         c = (hi - x) - lo;
-    } else if hx < 0x3c900000 {
+    } else if hx < crate::get_high_word(crate::expi(2.0, -54)) {
         /* |x| < 2**-54, return x */
         return x;
     } else {
@@ -107,7 +107,7 @@ pub(crate) const fn expm1(mut x: f64) -> f64 {
         /* suffice to return exp(x)-1 */
         y = x - e + 1.0;
         if k == 1024 {
-            y = y * 2.0 * f64::from_bits(0x7fe0000000000000);
+            y = y * 2.0 * crate::constants::EXP_SCALE;
         } else {
             y = y * twopk;
         }

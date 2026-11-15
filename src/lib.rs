@@ -15,7 +15,9 @@ mod asin;
 mod asinh;
 mod atan;
 mod atan2;
+mod atan_constants;
 mod atanh;
+mod constants;
 mod cos;
 mod exp;
 mod expm1;
@@ -25,6 +27,7 @@ mod k_sin;
 pub(crate) mod k_tan;
 mod ln;
 pub(crate) mod log1p;
+mod log_constants;
 mod pow;
 mod rem_pio2;
 mod rem_pio2_large;
@@ -45,6 +48,10 @@ pub use ln::ln;
 pub use pow::pow;
 pub use sin::sin;
 pub use tan::tan;
+
+// Shared high/low representation of pi/2.
+pub(crate) const PIO2_HI: f64 = atan_constants::ATAN_INFINITY.hi;
+pub(crate) const PIO2_LO: f64 = atan_constants::ATAN_INFINITY.lo;
 
 /// Cotangent
 ///
@@ -110,17 +117,19 @@ pub const fn sinh(x: f64) -> f64 {
 }
 
 const fn sinh_inner(x: f64) -> f64 {
+    const LOG_MAX: f64 = ln(f64::MAX);
+    const SMALL_ANGLE: f64 = expi(2.0, -26);
     let magnitude = x.abs();
-    let result = if magnitude < 709.782712893384 {
+    let result = if magnitude < LOG_MAX {
         // expm1 retains the low bits that exp(x) - 1 loses near zero.
-        if magnitude < 1.4901161193847656e-8 {
+        if magnitude < SMALL_ANGLE {
             return x;
         }
         let t = expm1::expm1(magnitude);
         if magnitude < 1.0 {
             0.5 * (2.0 * t - t * t / (t + 1.0))
         } else {
-            0.5 * (t + t / (t + 1.0))
+            f64::midpoint(t, t / (t + 1.0))
         }
     } else {
         // Scale before multiplication so exp(x) need not fit in an f64.
@@ -146,7 +155,14 @@ pub const fn cosh(x: f64) -> f64 {
 }
 
 const fn cosh_inner(x: f64) -> f64 {
-    (exp(x) + exp(-x)) / 2.0
+    const LOG_MAX: f64 = ln(f64::MAX);
+    if x.abs() >= LOG_MAX {
+        // Scale before multiplication so exp(|x|) need not fit in an f64.
+        let t = exp(0.5 * x.abs());
+        (0.5 * t) * t
+    } else {
+        f64::midpoint(exp(x), exp(-x))
+    }
 }
 
 /// x^pow
@@ -245,22 +261,28 @@ pub const fn fabs(x: f64) -> f64 {
     x.abs()
 }
 
+/// Replaces the upper 32 bits of an f64's representation.
 const fn with_set_high_word(f: f64, hi: u32) -> f64 {
     let mut tmp = f.to_bits();
-    tmp &= 0x00000000_ffffffff;
-    tmp |= (hi as u64) << 32;
+    tmp &= u32::MAX as u64;
+    tmp |= (hi as u64) << u32::BITS;
     f64::from_bits(tmp)
 }
+
+/// Replaces the lower 32 bits of an f64's representation.
 const fn with_set_low_word(f: f64, lo: u32) -> f64 {
     let mut tmp = f.to_bits();
-    tmp &= 0xffffffff_00000000;
+    tmp &= !(u32::MAX as u64);
     tmp |= lo as u64;
     f64::from_bits(tmp)
 }
+
+/// Returns the upper 32 bits of an f64's representation.
 const fn get_high_word(x: f64) -> u32 {
-    (x.to_bits() >> 32) as u32
+    (x.to_bits() >> u32::BITS) as u32
 }
 
+/// Returns the lower 32 bits of an f64's representation.
 const fn get_low_word(x: f64) -> u32 {
     x.to_bits() as u32
 }
@@ -413,9 +435,55 @@ mod tests {
     }
 
     #[test]
+    fn test_cosh_large_and_special_values_const() {
+        fn assert_close(actual: f64, expected: f64) {
+            assert!((actual / expected - 1.0).abs() <= 2.0 * f64::EPSILON);
+        }
+
+        assert_close(const { cosh(709.78) }, 709.78_f64.cosh());
+        assert_close(
+            const { cosh(709.7827128933839) },
+            709.7827128933839_f64.cosh(),
+        );
+        assert_close(
+            const { cosh(709.782712893384) },
+            709.782712893384_f64.cosh(),
+        );
+        assert_close(const { cosh(710.0) }, 710.0_f64.cosh());
+        assert_close(const { cosh(-710.0) }, (-710.0_f64).cosh());
+        assert_close(const { cosh(710.47) }, 710.47_f64.cosh());
+        assert_close(
+            const { cosh(710.4758600739439) },
+            710.4758600739439_f64.cosh(),
+        );
+        assert_eq!((const { cosh(710.475860073944) }), f64::INFINITY);
+        assert_eq!((const { cosh(f64::INFINITY) }), f64::INFINITY);
+        assert_eq!((const { cosh(f64::NEG_INFINITY) }), f64::INFINITY);
+        assert!(const { cosh(f64::NAN) }.is_nan());
+    }
+
+    #[test]
+    fn test_inverse_trig_domain_const() {
+        assert!(const { crate::asin(1.1) }.is_nan());
+        assert!(const { crate::asin(-1.1) }.is_nan());
+        assert!(const { crate::asin(1.0000000000000002) }.is_nan());
+        assert!(const { crate::asin(f64::INFINITY) }.is_nan());
+        assert!(const { crate::asin(f64::NAN) }.is_nan());
+        assert!(const { crate::acos(1.1) }.is_nan());
+        assert!(const { crate::acos(-1.1) }.is_nan());
+        assert!(const { crate::acos(-1.0000000000000002) }.is_nan());
+        assert!(const { crate::acos(f64::NEG_INFINITY) }.is_nan());
+        assert!(const { crate::acos(f64::NAN) }.is_nan());
+        assert_eq!((const { crate::asin(1.0) }), core::f64::consts::FRAC_PI_2);
+        assert_eq!((const { crate::asin(-1.0) }), -core::f64::consts::FRAC_PI_2);
+        assert_eq!((const { crate::acos(1.0) }), 0.0);
+        assert_eq!((const { crate::acos(-1.0) }), core::f64::consts::PI);
+    }
+
+    #[test]
     fn test_ln() {
-        // float_eq!(ln(0.01), 0.01_f64.ln());
-        // float_eq!(ln(0.5), 0.5_f64.ln());
+        float_eq!(ln(0.01), 0.01_f64.ln());
+        float_eq!(ln(0.5), 0.5_f64.ln());
         float_eq!(ln(1.0), 1.0_f64.ln());
         float_eq!(ln(2.0), 2.0_f64.ln());
         float_eq!(ln(10.0), 10.0_f64.ln());

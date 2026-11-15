@@ -1,9 +1,9 @@
-const SIG_BITS: u32 = 52;
-const BITS: u32 = 64;
+const SIG_BITS: u32 = f64::MANTISSA_DIGITS - 1;
+const BITS: u32 = u64::BITS;
 const EXP_BITS: u32 = BITS - SIG_BITS - 1;
 const EXP_SAT: u32 = (1 << EXP_BITS) - 1;
 const EXP_BIAS: u32 = EXP_SAT >> 1;
-const SIG_MASK: u64 = 4503599627370495;
+const SIG_MASK: u64 = (1_u64 << SIG_BITS) - 1;
 const EXP_MAX: i32 = EXP_BIAS as i32;
 const EXP_MIN: i32 = -(EXP_MAX - 1);
 
@@ -39,7 +39,7 @@ pub(crate) const fn scalbn(mut x: f64, mut n: i32) -> f64 {
     // 2 ^ Emin, minimum positive normal with null significand (0x1p-1022 for f64)
     let f_exp_min = from_parts(false, 1, zero);
 
-    // 2 ^ sig_total_bits, moltiplier to normalize subnormals (0x1p53 for f64)
+    // 2 ^ sig_total_bits, multiplier to normalize subnormals (0x1p53 for f64)
     let f_pow_subnorm = from_parts(false, sig_total_bits + EXP_BIAS, zero);
 
     /*
@@ -50,7 +50,7 @@ pub(crate) const fn scalbn(mut x: f64, mut n: i32) -> f64 {
      */
 
     if n > exp_max {
-        // Worse case positive `n`: `x`  is the minimum subnormal value, the result is `F::MAX`.
+        // Worst case positive `n`: scale the minimum subnormal to near f64::MAX.
         // This can be reached by three scaling multiplications (two here and one final).
         debug_assert!(-exp_min + SIG_BITS as i32 + exp_max <= exp_max * 3);
 
@@ -71,7 +71,7 @@ pub(crate) const fn scalbn(mut x: f64, mut n: i32) -> f64 {
             let mul = f_exp_min * f_pow_subnorm;
             let add = -exp_min - sig_total_bits as i32;
 
-            // Worse case negative `n`: `x`  is the maximum positive value, the result is `F::MIN`.
+            // Worst case negative `n`: scale f64::MAX to a subnormal result.
             // This must be reachable by three scaling multiplications (two here and one final).
             debug_assert!(-exp_min + SIG_BITS as i32 + exp_max <= add * 2 + -exp_min);
 
@@ -94,7 +94,7 @@ pub(crate) const fn scalbn(mut x: f64, mut n: i32) -> f64 {
             // the exponent range. For `f16`, however, 3 is relatively small compared to the
             // exponent range (which is 39), so that requires ~10 prescale rounds rather than two.
             //
-            // Work aroudn this by using a different algorithm that calculates the prescale
+            // Work around this by using a different algorithm that calculates the prescale
             // dynamically based on the maximum possible value. This adds more operations per round
             // since it needs to construct the scale, but works better in the general case.
             let add = -clamp(n + sig_total_bits as i32, exp_min, sig_total_bits as i32);

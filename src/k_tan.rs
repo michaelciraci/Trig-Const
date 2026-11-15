@@ -55,11 +55,11 @@ static T: [f64; 13] = [
     -1.85586374855275456654e-05, /* BEF375CB, DB605373 */
     2.59073051863633712884e-05,  /* 3EFB2A70, 74BF7AD4 */
 ];
-const PIO4: f64 = 7.85398163397448278999e-01; /* 3FE921FB, 54442D18 */
-const PIO4_LO: f64 = 3.06161699786838301793e-17; /* 3C81A626, 33145C07 */
+const PIO4: f64 = crate::PIO2_HI / 2.0;
+const PIO4_LO: f64 = crate::PIO2_LO / 2.0;
 
 pub(crate) const fn k_tan(mut x: f64, mut y: f64, odd: i32) -> f64 {
-    let hx = (f64::to_bits(x) >> 32) as u32;
+    let hx = crate::get_high_word(x);
     let big = (hx & 0x7fffffff) >= 0x3FE59428; /* |x| >= 0.6744 */
     if big {
         let sign = hx >> 31;
@@ -92,13 +92,20 @@ pub(crate) const fn k_tan(mut x: f64, mut y: f64, odd: i32) -> f64 {
         return w;
     }
     /* -1.0/(x+r) has up to 2ulp error, so compute it accurately */
-    let w0 = zero_low_word(w);
+    let w0 = crate::with_set_low_word(w, 0);
     let v = r - (w0 - x); /* w0+v = r+x */
     let a = -1.0 / w;
-    let a0 = zero_low_word(a);
+    let a0 = crate::with_set_low_word(a, 0);
     a0 + a * (1.0 + a0 * w0 + a0 * v)
 }
 
-const fn zero_low_word(x: f64) -> f64 {
-    f64::from_bits(f64::to_bits(x) & 0xFFFF_FFFF_0000_0000)
+#[cfg(test)]
+mod tests {
+    use super::{PIO4, PIO4_LO};
+
+    #[test]
+    fn pi_over_four_split_preserves_original_bits() {
+        assert_eq!(PIO4.to_bits(), 0x3fe9_21fb_5444_2d18);
+        assert_eq!(PIO4_LO.to_bits(), 0x3c81_a626_3314_5c07);
+    }
 }

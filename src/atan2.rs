@@ -38,9 +38,11 @@
  */
 use core::f64::consts::PI;
 
-use crate::{atan, fabs};
+use crate::{atan, fabs, PIO2_LO};
 
 /// Arctan2
+///
+/// Returns the angle of the point (`x`, `y`) in radians, in [-π, π].
 ///
 /// ```
 /// # use trig_const::atan2;
@@ -53,7 +55,7 @@ pub const fn atan2(y: f64, x: f64) -> f64 {
 }
 
 const fn atan2_inner(y: f64, x: f64) -> f64 {
-    const PI_LO: f64 = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
+    const PI_LO: f64 = 2.0 * PIO2_LO;
     if x.is_nan() || y.is_nan() {
         return x + y;
     }
@@ -61,7 +63,7 @@ const fn atan2_inner(y: f64, x: f64) -> f64 {
     let lx = x.to_bits() as u32;
     let mut iy = (y.to_bits() >> 32) as u32;
     let ly = y.to_bits() as u32;
-    if ((ix.wrapping_sub(0x3ff00000)) | lx) == 0 {
+    if ((ix.wrapping_sub(crate::get_high_word(1.0))) | lx) == 0 {
         /* x = 1.0 */
         return atan(y);
     }
@@ -82,8 +84,8 @@ const fn atan2_inner(y: f64, x: f64) -> f64 {
         return if m & 1 != 0 { -PI / 2.0 } else { PI / 2.0 };
     }
     /* when x is INF */
-    if ix == 0x7ff00000 {
-        if iy == 0x7ff00000 {
+    if ix == crate::constants::INFINITY_HIGH_WORD {
+        if iy == crate::constants::INFINITY_HIGH_WORD {
             return match m {
                 0 => PI / 4.0,        /* atan(+INF,+INF) */
                 1 => -PI / 4.0,       /* atan(-INF,+INF) */
@@ -100,7 +102,7 @@ const fn atan2_inner(y: f64, x: f64) -> f64 {
         }
     }
     /* |y/x| > 0x1p64 */
-    if ix.wrapping_add(64 << 20) < iy || iy == 0x7ff00000 {
+    if ix.wrapping_add(64 << 20) < iy || iy == crate::constants::INFINITY_HIGH_WORD {
         return if m & 1 != 0 { -PI / 2.0 } else { PI / 2.0 };
     }
 

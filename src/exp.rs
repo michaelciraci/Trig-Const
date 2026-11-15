@@ -68,9 +68,10 @@
 use super::scalbn;
 
 const HALF: [f64; 2] = [0.5, -0.5];
-const LN2HI: f64 = 6.93147180369123816490e-01; /* 0x3fe62e42, 0xfee00000 */
-const LN2LO: f64 = 1.90821492927058770002e-10; /* 0x3dea39ef, 0x35793c76 */
-const INVLN2: f64 = 1.44269504088896338700e+00; /* 0x3ff71547, 0x652b82fe */
+const LN2HI: f64 = crate::log_constants::LN_TWO_TRUNCATED.hi;
+const LN2LO: f64 = crate::log_constants::LN_TWO_TRUNCATED.lo;
+const INVLN2: f64 = core::f64::consts::LOG2_E;
+// Fitted coefficients for the reduced-argument exponential.
 const P1: f64 = 1.66666666666666019037e-01; /* 0x3FC55555, 0x5555553E */
 const P2: f64 = -2.77777777770155933842e-03; /* 0xBF66C16C, 0x16BEBD93 */
 const P3: f64 = 6.61375632143793436117e-05; /* 0x3F11566A, 0xAF25DE2C */
@@ -86,7 +87,8 @@ pub const fn exp(x: f64) -> f64 {
 }
 
 const fn exp_inner(mut x: f64) -> f64 {
-    let x1p1023 = f64::from_bits(0x7fe0000000000000); // 0x1p1023 === 2 ^ 1023
+    const LOG_MAX: f64 = crate::ln(f64::MAX);
+    const LOG_MIN_NORMAL: f64 = crate::ln(f64::MIN_POSITIVE);
 
     let hi: f64;
     let lo: f64;
@@ -103,12 +105,12 @@ const fn exp_inner(mut x: f64) -> f64 {
         if x.is_nan() {
             return x;
         }
-        if x > 709.782712893383973096 {
+        if x > LOG_MAX {
             /* overflow if x!=inf */
-            x *= x1p1023;
+            x *= crate::constants::EXP_SCALE;
             return x;
         }
-        if x < -708.39641853226410622 {
+        if x < LOG_MIN_NORMAL {
             /* underflow if x!=-inf */
             if x < -745.13321910194110842 {
                 return 0.;
@@ -117,9 +119,9 @@ const fn exp_inner(mut x: f64) -> f64 {
     }
 
     /* argument reduction */
-    if hx > 0x3fd62e42 {
+    if hx > crate::constants::HALF_LN_2_HIGH_WORD {
         /* if |x| > 0.5 ln2 */
-        if hx >= 0x3ff0a2b2 {
+        if hx >= crate::constants::THREE_HALVES_LN_2_HIGH_WORD {
             /* if |x| >= 1.5 ln2 */
             k = (INVLN2 * x + HALF[sign as usize]) as i32;
         } else {
@@ -128,7 +130,7 @@ const fn exp_inner(mut x: f64) -> f64 {
         hi = x - k as f64 * LN2HI; /* k*ln2hi is exact here */
         lo = k as f64 * LN2LO;
         x = hi - lo;
-    } else if hx > 0x3e300000 {
+    } else if hx > crate::get_high_word(crate::expi(2.0, -28)) {
         /* if |x| > 2**-28 */
         k = 0;
         hi = x;
@@ -139,12 +141,17 @@ const fn exp_inner(mut x: f64) -> f64 {
     }
 
     /* x is now in primary range */
-    let xx = x * x;
-    let c = x - xx * (P1 + xx * (P2 + xx * (P3 + xx * (P4 + xx * P5))));
+    let c = exp_correction(x);
     let y = 1. + (x * c / (2. - c) - lo + hi);
     if k == 0 {
         y
     } else {
         scalbn::scalbn(y, k)
     }
+}
+
+// Shared by exp and pow.
+pub(crate) const fn exp_correction(x: f64) -> f64 {
+    let square = x * x;
+    x - square * (P1 + square * (P2 + square * (P3 + square * (P4 + square * P5))))
 }
