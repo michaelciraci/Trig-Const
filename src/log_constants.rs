@@ -23,6 +23,7 @@ const LOG2_E_BOUNDS: Bounds = Bounds {
 };
 
 const SCALE: u128 = 1_u128 << (u128::BITS - 1);
+const SCALE_F64: f64 = SCALE as f64;
 
 /// Inclusive bounds on a value, in units of 2^-127.
 #[derive(Clone, Copy)]
@@ -81,9 +82,9 @@ impl Bounds {
     }
 
     const fn rounded(self) -> f64 {
-        let result = self.lo as f64 / SCALE as f64;
+        let result = self.lo as f64 / SCALE_F64;
         // Both endpoints must round alike to determine a unique result.
-        assert!(result.to_bits() == (self.hi as f64 / SCALE as f64).to_bits());
+        assert!(result.to_bits() == (self.hi as f64 / SCALE_F64).to_bits());
         result
     }
 
@@ -100,7 +101,7 @@ impl Bounds {
     }
 
     const fn split_with_hi(self, hi: f64) -> SplitLog {
-        let scaled = (hi * SCALE as f64) as u128;
+        let scaled = (hi * SCALE_F64) as u128;
         let (lo, upper, negative) = if scaled <= self.lo {
             (self.lo - scaled, self.hi - scaled, false)
         } else {

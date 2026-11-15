@@ -23,6 +23,7 @@ const PI_OVER_FOUR: Bounds = Bounds {
 };
 
 const SCALE: u128 = 1_u128 << (u128::BITS - 1);
+const SCALE_F64: f64 = SCALE as f64;
 
 /// Inclusive bounds on an angle, in units of 2^-127 radians.
 #[derive(Clone, Copy)]
@@ -70,16 +71,15 @@ impl Bounds {
     }
 
     const fn split(self) -> SplitAngle {
-        let scale = SCALE as f64;
-        let hi = self.lo as f64 / scale;
+        let hi = self.lo as f64 / SCALE_F64;
         // The interval must identify one rounded high part.
-        assert!(hi.to_bits() == (self.hi as f64 / scale).to_bits());
-        let hi_scaled = (hi * scale) as u128;
+        assert!(hi.to_bits() == (self.hi as f64 / SCALE_F64).to_bits());
+        let hi_scaled = (hi * SCALE_F64) as u128;
         // This split only supports a nonnegative remainder.
         assert!(hi_scaled <= self.lo);
-        let lo = (self.lo - hi_scaled) as f64 / scale;
+        let lo = (self.lo - hi_scaled) as f64 / SCALE_F64;
         // The remaining interval must also identify one rounded low part.
-        assert!(lo.to_bits() == ((self.hi - hi_scaled) as f64 / scale).to_bits());
+        assert!(lo.to_bits() == ((self.hi - hi_scaled) as f64 / SCALE_F64).to_bits());
         SplitAngle { hi, lo }
     }
 }
