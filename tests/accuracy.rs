@@ -1,18 +1,10 @@
-//! Selected accuracy checks for the crate's const implementations.
-//!
-//! References were calculated from the exact f64 inputs using 470-digit decimal
-//! arithmetic, then rounded to f64. Trigonometric references use high-precision
-//! argument reduction and Taylor series. Other references use high-precision
-//! logarithms, exponentials, square roots, and their mathematical identities.
-//! A one-ULP allowance applies to these cases, not to every possible input.
-
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, FRAC_PI_6, LN_2, PI};
 use trig_const::{
     acos, acosh, asin, asinh, atan, atan2, atanh, cos, cosh, exp, ln, pow, sin, sinh, sqrt, tan,
 };
 
 const MIN_SUBNORMAL: f64 = f64::from_bits(1);
-// Adjacent f64 values around 1 and the rounded value of pi/2.
+// Neighbors of 1 and the rounded pi/2.
 const BELOW_ONE: f64 = f64::from_bits(1.0_f64.to_bits() - 1);
 const ABOVE_ONE: f64 = f64::from_bits(1.0_f64.to_bits() + 1);
 const BELOW_PI_2: f64 = f64::from_bits(FRAC_PI_2.to_bits() - 1);
@@ -21,15 +13,12 @@ const ABOVE_PI_2: f64 = f64::from_bits(FRAC_PI_2.to_bits() + 1);
 const ONE_ULP: u64 = 1;
 const EXACT: u64 = 0;
 
-// A ULP is one step between adjacent f64 values. Map bit patterns to
-// ascending integer order so subtraction also works for negative values.
+// Map f64 bits to numeric order so their difference counts ULPs.
 fn ordered_bits(value: f64) -> u64 {
     let bits = value.to_bits();
     if value.is_sign_negative() {
-        // Negative values have the opposite bit ordering.
         !bits
     } else {
-        // Place nonnegative values after negative values.
         bits | (1 << 63)
     }
 }
@@ -46,10 +35,10 @@ fn assert_within_ulps(label: &str, actual: f64, expected: f64, max_ulps: u64) {
     );
 }
 
-// A case contains (input description, actual result, reference result).
+// (Description, actual, reference.)
 type AccuracyCase = (&'static str, f64, f64);
 
-// Const cases exercise this crate even when nightly forwards runtime calls.
+// Const cases bypass nightly runtime forwarding.
 fn assert_cases(cases: &[AccuracyCase], max_ulps: u64) {
     for &(label, actual, expected) in cases {
         assert_within_ulps(label, actual, expected, max_ulps);
@@ -66,7 +55,7 @@ fn adjacent_values_are_one_ulp_apart() {
 
 #[test]
 fn sine_accuracy() {
-    // Large arguments exercise reduction by multiples of pi/2.
+    // Large inputs exercise argument reduction.
     const CASES: &[AccuracyCase] = &[
         ("min subnormal", sin(MIN_SUBNORMAL), MIN_SUBNORMAL),
         ("-0.1", sin(-0.1), -0.09983341664682815),
@@ -91,7 +80,7 @@ fn cosine_accuracy() {
 
 #[test]
 fn tangent_accuracy() {
-    // Values on either side of pi/2 are close to a tangent pole.
+    // Probe both sides of the pi/2 pole.
     const CASES: &[AccuracyCase] = &[
         ("min subnormal", tan(MIN_SUBNORMAL), MIN_SUBNORMAL),
         ("below pi/2", tan(BELOW_PI_2), 3_530_114_321_217_157.5),
@@ -108,7 +97,6 @@ fn tangent_accuracy() {
 
 #[test]
 fn arcsine_accuracy() {
-    // Values just inside ±1 exercise the domain boundaries.
     const CASES: &[AccuracyCase] = &[
         ("min subnormal", asin(MIN_SUBNORMAL), MIN_SUBNORMAL),
         ("-0.5", asin(-0.5), -FRAC_PI_6),
@@ -209,7 +197,6 @@ fn logarithm_accuracy() {
 
 #[test]
 fn exponential_accuracy() {
-    // Include inputs near underflow, the normal/subnormal boundary, and overflow.
     const CASES: &[AccuracyCase] = &[
         ("underflow boundary", exp(-745.1332191019411), MIN_SUBNORMAL),
         ("subnormal result", exp(-744.0), f64::from_bits(2)),
@@ -274,7 +261,6 @@ fn square_root_accuracy() {
 
 #[test]
 fn power_accuracy() {
-    // Large exponents, subnormal results, and a base very close to 1.
     const CASES: &[AccuracyCase] = &[
         ("2^-1074", pow(2.0, -1074.0), MIN_SUBNORMAL),
         ("(1e155)^-2", pow(1e155, -2.0), 1e-310),
@@ -296,7 +282,7 @@ fn power_accuracy() {
 
 #[test]
 fn underflow_boundaries() {
-    // One ULP of error would turn the smallest subnormal into zero.
+    // One ULP below the smallest subnormal is zero.
     for (label, actual) in [
         ("sin", const { sin(MIN_SUBNORMAL) }),
         ("tan", const { tan(MIN_SUBNORMAL) }),
@@ -324,7 +310,7 @@ fn exponential_overflow_boundary() {
 
 #[test]
 fn trig_special_values() {
-    // Compare bits to distinguish positive and negative zero.
+    // Float equality doesn't distinguish signed zero.
     assert_eq!((const { sin(0.0) }).to_bits(), 0.0_f64.to_bits());
     assert_eq!((const { sin(-0.0) }).to_bits(), (-0.0_f64).to_bits());
     assert_eq!((const { tan(0.0) }).to_bits(), 0.0_f64.to_bits());
