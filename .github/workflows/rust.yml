@@ -21,6 +21,10 @@ jobs:
         targets: thumbv7em-none-eabi
     - name: Install nightly
       uses: dtolnay/rust-toolchain@nightly
+    - name: Install minimum supported Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: 1.85.0
     - name: Check no_std on a bare-metal target
       run: cargo +stable check --lib --no-default-features --target thumbv7em-none-eabi
     - name: Clippy
@@ -29,6 +33,8 @@ jobs:
       run: cargo +stable build
     - name: Run tests on stable
       run: cargo +stable test
+    - name: Run tests on minimum supported Rust
+      run: cargo +1.85.0 test
     - name: Run tests on nightly no_std
       run: cargo +nightly test --features nightly
     - name: Run tests on nightly with std
