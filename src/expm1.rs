@@ -11,6 +11,10 @@
  */
 
 const O_THRESHOLD: f64 = crate::ln(f64::MAX);
+// Large negative inputs round to -1; this also triggers overflow and NaN checks.
+const NEGATIVE_SATURATION_HIGH_WORD: u32 = crate::get_high_word(56.0 * core::f64::consts::LN_2);
+// Below this cutoff, expm1(x) rounds to x.
+const LINEAR_APPROXIMATION_HIGH_WORD: u32 = crate::get_high_word(crate::expi(2.0, -54));
 const LN2_HI: f64 = crate::log_constants::LN_TWO_TRUNCATED.hi;
 const LN2_LO: f64 = crate::log_constants::LN_TWO_TRUNCATED.lo;
 const INVLN2: f64 = core::f64::consts::LOG2_E;
@@ -23,12 +27,10 @@ const Q5: f64 = -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
 /// Computes exp(x) - 1 without cancellation near zero.
 pub(crate) const fn expm1(x: f64) -> f64 {
-    let bits = x.to_bits();
-    let high_word = ((bits >> 32) & 0x7fffffff) as u32;
-    let negative = bits >> 63 != 0;
+    let high_word = crate::get_high_word(x.abs());
+    let negative = x.is_sign_negative();
 
-    // Handle large and non-finite inputs.
-    if high_word >= crate::get_high_word(56.0 * core::f64::consts::LN_2) {
+    if high_word >= NEGATIVE_SATURATION_HIGH_WORD {
         if x.is_nan() {
             return x;
         }
@@ -67,7 +69,7 @@ pub(crate) const fn expm1(x: f64) -> f64 {
         reduced = hi - lo;
         // Recover the rounding error in hi - lo.
         correction = (hi - reduced) - lo;
-    } else if high_word < crate::get_high_word(crate::expi(2.0, -54)) {
+    } else if high_word < LINEAR_APPROXIMATION_HIGH_WORD {
         return x;
     }
 
