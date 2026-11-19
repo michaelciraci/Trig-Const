@@ -11,6 +11,10 @@
  */
 
 const O_THRESHOLD: f64 = crate::ln(f64::MAX);
+// Large negative inputs round to -1; this also triggers overflow and NaN checks.
+const NEGATIVE_SATURATION_HIGH_WORD: u32 = crate::get_high_word(56.0 * core::f64::consts::LN_2);
+// Below this cutoff, expm1(x) rounds to x.
+const LINEAR_APPROXIMATION_HIGH_WORD: u32 = crate::get_high_word(crate::expi(2.0, -54));
 const LN2_HI: f64 = crate::log_constants::LN_TWO_TRUNCATED.hi;
 const LN2_LO: f64 = crate::log_constants::LN_TWO_TRUNCATED.lo;
 const INVLN2: f64 = core::f64::consts::LOG2_E;
@@ -22,110 +26,197 @@ const Q4: f64 = 4.00821782732936239552e-06; /* 3ED0CFCA 86E65239 */
 const Q5: f64 = -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
 /// Computes exp(x) - 1 without cancellation near zero.
-pub(crate) const fn expm1(mut x: f64) -> f64 {
-    let hi: f64;
-    let lo: f64;
-    let k: i32;
-    let c: f64;
-    let mut t: f64;
-    let mut y: f64;
+pub(crate) const fn expm1(x: f64) -> f64 {
+    let high_word = crate::get_high_word(x.abs());
+    let negative = x.is_sign_negative();
 
-    let mut ui = x.to_bits();
-    let hx = ((ui >> 32) & 0x7fffffff) as u32;
-    let sign = (ui >> 63) as i32;
-
-    /* filter out huge and non-finite argument */
-    if hx >= crate::get_high_word(56.0 * core::f64::consts::LN_2) {
-        /* if |x|>=56*ln2 */
+    if high_word >= NEGATIVE_SATURATION_HIGH_WORD {
         if x.is_nan() {
             return x;
         }
-        if sign != 0 {
+        if negative {
             return -1.0;
         }
         if x > O_THRESHOLD {
-            x *= crate::constants::EXP_SCALE;
-            return x;
+            return x * crate::constants::EXP_SCALE;
         }
     }
 
-    /* argument reduction */
-    if hx > crate::constants::HALF_LN_2_HIGH_WORD {
-        /* if  |x| > 0.5 ln2 */
-        if hx < crate::constants::THREE_HALVES_LN_2_HIGH_WORD {
-            /* and |x| < 1.5 ln2 */
-            if sign == 0 {
-                hi = x - LN2_HI;
-                lo = LN2_LO;
-                k = 1;
-            } else {
+    // Reduce x to approximately [-ln(2)/2, ln(2)/2].
+    let mut reduced = x;
+    let mut correction = 0.0;
+    let mut exponent = 0;
+    if high_word > crate::constants::HALF_LN_2_HIGH_WORD {
+        let hi;
+        let lo;
+        if high_word < crate::constants::THREE_HALVES_LN_2_HIGH_WORD {
+            if negative {
                 hi = x + LN2_HI;
                 lo = -LN2_LO;
-                k = -1;
+                exponent = -1;
+            } else {
+                hi = x - LN2_HI;
+                lo = LN2_LO;
+                exponent = 1;
             }
         } else {
-            k = (INVLN2 * x + if sign != 0 { -0.5 } else { 0.5 }) as i32;
-            t = k as f64;
-            hi = x - t * LN2_HI; /* t*ln2_hi is exact here */
-            lo = t * LN2_LO;
+            exponent = (INVLN2 * x + if negative { -0.5 } else { 0.5 }) as i32;
+            let exponent_f64 = exponent as f64;
+            // exponent * LN2_HI is exact here.
+            hi = x - exponent_f64 * LN2_HI;
+            lo = exponent_f64 * LN2_LO;
         }
-        x = hi - lo;
-        c = (hi - x) - lo;
-    } else if hx < crate::get_high_word(crate::expi(2.0, -54)) {
-        /* |x| < 2**-54, return x */
+        reduced = hi - lo;
+        // Recover the rounding error in hi - lo.
+        correction = (hi - reduced) - lo;
+    } else if high_word < LINEAR_APPROXIMATION_HIGH_WORD {
         return x;
-    } else {
-        c = 0.0;
-        k = 0;
     }
 
-    /* x is now in primary range */
-    let hfx = 0.5 * x;
-    let hxs = x * hfx;
-    let r1 = 1.0 + hxs * (Q1 + hxs * (Q2 + hxs * (Q3 + hxs * (Q4 + hxs * Q5))));
-    t = 3.0 - r1 * hfx;
-    let mut e = hxs * ((r1 - t) / (6.0 - x * t));
-    if k == 0 {
-        /* c is 0 */
-        return x - (x * e - hxs);
+    let half_x = 0.5 * reduced;
+    let half_square = reduced * half_x;
+    let polynomial = 1.0
+        + half_square
+            * (Q1
+                + half_square * (Q2 + half_square * (Q3 + half_square * (Q4 + half_square * Q5))));
+    let rational_term = 3.0 - polynomial * half_x;
+    let rational_correction =
+        half_square * ((polynomial - rational_term) / (6.0 - reduced * rational_term));
+
+    // exp(reduced) - 1 ≈ reduced + half_square - reduced * rational_correction.
+    if exponent == 0 {
+        return reduced - (reduced * rational_correction - half_square);
     }
-    e = x * (e - c) - c;
-    e -= hxs;
-    /* exp(x) ~ 2^k (x_reduced - e + 1) */
-    if k == -1 {
-        return 0.5 * (x - e) - 0.5;
-    }
-    if k == 1 {
-        if x < -0.25 {
-            return -2.0 * (e - (x + 0.5));
+    let corrected_error = reduced * (rational_correction - correction) - correction;
+    let corrected_error = corrected_error - half_square;
+
+    reconstruct_expm1(reduced, corrected_error, exponent)
+}
+
+/// Reconstructs `exp(x) - 1` after reducing `x ≈ exponent * ln(2) + reduced`.
+/// `exponent` is nonzero; `corrected_error` adjusts for higher-order terms and reduction error:
+/// `exp(x) ≈ 2^exponent * (1 + reduced - corrected_error)`.
+const fn reconstruct_expm1(reduced: f64, corrected_error: f64, exponent: i32) -> f64 {
+    // Rearrange the result to retain precision for each exponent.
+    match exponent {
+        -1 => 0.5 * (reduced - corrected_error) - 0.5,
+        0 => unreachable!(), // We check before we call this function that it's not 0
+        1 => {
+            if reduced < -0.25 {
+                -2.0 * (corrected_error - (reduced + 0.5))
+            } else {
+                1.0 + 2.0 * (reduced - corrected_error)
+            }
         }
-        return 1.0 + 2.0 * (x - e);
-    }
-    ui = ((0x3ff + k) as u64) << 52; /* 2^k */
-    let twopk = f64::from_bits(ui);
-    if k < 0 || k > 56 {
-        /* suffice to return exp(x)-1 */
-        y = x - e + 1.0;
-        if k == 1024 {
-            y = y * 2.0 * crate::constants::EXP_SCALE;
-        } else {
-            y = y * twopk;
+        2..=56 => {
+            let scale = normal_power_of_two(exponent);
+            let inverse_scale = normal_power_of_two(-exponent);
+            if exponent < 20 {
+                (reduced - corrected_error + (1.0 - inverse_scale)) * scale
+            } else {
+                (reduced - (corrected_error + inverse_scale) + 1.0) * scale
+            }
         }
-        return y - 1.0;
+        // 2^1024 is not representable, so scale in two steps.
+        f64::MAX_EXP => (reduced - corrected_error + 1.0) * 2.0 * crate::constants::EXP_SCALE - 1.0,
+        _ => (reduced - corrected_error + 1.0) * normal_power_of_two(exponent) - 1.0,
     }
-    ui = ((0x3ff - k) as u64) << 52; /* 2^-k */
-    let uf = f64::from_bits(ui);
-    if k < 20 {
-        y = (x - e + (1.0 - uf)) * twopk;
-    } else {
-        y = (x - (e + uf) + 1.0) * twopk;
-    }
-    y
+}
+
+// Construct a power of two in the normal f64 range.
+const fn normal_power_of_two(exponent: i32) -> f64 {
+    const EXPONENT_BIAS: i32 = f64::MAX_EXP - 1;
+    const FRACTION_BITS: u32 = f64::MANTISSA_DIGITS - 1;
+    f64::from_bits(((EXPONENT_BIAS + exponent) as u64) << FRACTION_BITS)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::expm1;
+    use super::{expm1, normal_power_of_two, reconstruct_expm1};
+
+    #[test]
+    fn linear_approximation_cutoff() {
+        let cutoff = f64::EPSILON / 4.0;
+        let below = f64::from_bits(cutoff.to_bits() - 1);
+
+        assert_eq!(expm1(below), below);
+        assert_eq!(expm1(-below), -below);
+        assert_eq!(expm1(cutoff), cutoff);
+        assert_eq!(expm1(-cutoff), -cutoff);
+    }
+
+    #[test]
+    fn argument_reduction_cutoffs() {
+        // Adjacent inputs around the high-word cutoff near ln(2)/2.
+        assert_eq!(expm1(0.34657359123229975), 0.41421356371988893);
+        assert_eq!(expm1(0.3465735912322998), 0.41421356371988904);
+
+        // Adjacent inputs around the high-word cutoff near 3*ln(2)/2.
+        assert_eq!(expm1(-1.03972053527832), -0.6464465261231148);
+        assert_eq!(expm1(-1.0397205352783203), -0.6464465261231149);
+    }
+
+    #[test]
+    fn normal_power_of_two_values() {
+        assert_eq!(normal_power_of_two(-2), 0.25);
+        assert_eq!(normal_power_of_two(-1), 0.5);
+        assert_eq!(normal_power_of_two(0), 1.0);
+        assert_eq!(normal_power_of_two(1), 2.0);
+        assert_eq!(normal_power_of_two(2), 4.0);
+        assert_eq!(normal_power_of_two(-1022), f64::MIN_POSITIVE);
+        assert_eq!(normal_power_of_two(1023), crate::expi(2.0, 1023));
+    }
+
+    #[test]
+    fn reconstructs_powers_of_two_minus_one() {
+        // A zero remainder and correction make exp(x) = 2^exponent.
+        assert_eq!(reconstruct_expm1(0.0, 0.0, -2), -0.75);
+        assert_eq!(reconstruct_expm1(0.0, 0.0, -1), -0.5);
+        assert_eq!(reconstruct_expm1(0.0, 0.0, 1), 1.0);
+        assert_eq!(reconstruct_expm1(0.0, 0.0, 2), 3.0);
+        assert_eq!(reconstruct_expm1(0.0, 0.0, 19), 524_287.0);
+        assert_eq!(reconstruct_expm1(0.0, 0.0, 20), 1_048_575.0);
+
+        // At these magnitudes, subtracting 1 rounds away.
+        assert_eq!(reconstruct_expm1(0.0, 0.0, 56), crate::expi(2.0, 56));
+        assert_eq!(reconstruct_expm1(0.0, 0.0, 57), crate::expi(2.0, 57));
+    }
+
+    #[test]
+    fn reconstructs_with_a_nonzero_remainder() {
+        // For reduced = 0.25, corrected_error ≈ 1.25 - exp(0.25).
+        assert_eq!(
+            reconstruct_expm1(0.25, -0.034025416687741485, -1),
+            -0.35798729165612925
+        );
+        assert_eq!(
+            reconstruct_expm1(0.25, -0.034025416687741485, 1),
+            1.568050833375483
+        );
+        assert_eq!(
+            reconstruct_expm1(0.25, -0.034025416687741485, 2),
+            4.136101666750966
+        );
+    }
+
+    #[test]
+    fn reconstructs_when_exponent_is_one_and_reduced_is_negative() {
+        // corrected_error ≈ 1 - 0.3125 - exp(-0.3125).
+        assert_eq!(
+            reconstruct_expm1(-0.3125, -0.04411562894664179, 1),
+            0.46323125789328357
+        );
+    }
+
+    #[test]
+    fn reconstructs_at_maximum_exponent() {
+        // exp(-0.25) * 2^1024 is finite even though 2^1024 overflows.
+        assert_eq!(
+            reconstruct_expm1(-0.25, -0.028800783071404868, f64::MAX_EXP),
+            1.4000448211528603e308
+        );
+        assert!(reconstruct_expm1(0.25, -0.034025416687741485, f64::MAX_EXP).is_infinite());
+    }
 
     #[test]
     fn const_values() {
