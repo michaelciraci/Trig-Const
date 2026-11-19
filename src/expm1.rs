@@ -97,11 +97,10 @@ pub(crate) const fn expm1(x: f64) -> f64 {
 /// `exponent` is nonzero; `corrected_error` adjusts for higher-order terms and reduction error:
 /// `exp(x) ≈ 2^exponent * (1 + reduced - corrected_error)`.
 const fn reconstruct_expm1(reduced: f64, corrected_error: f64, exponent: i32) -> f64 {
-    debug_assert!(exponent != 0);
-
     // Rearrange the result to retain precision for each exponent.
     match exponent {
         -1 => 0.5 * (reduced - corrected_error) - 0.5,
+        0 => unreachable!(), // We check before we call this function that it's not 0
         1 => {
             if reduced < -0.25 {
                 -2.0 * (corrected_error - (reduced + 0.5))
@@ -109,8 +108,6 @@ const fn reconstruct_expm1(reduced: f64, corrected_error: f64, exponent: i32) ->
                 1.0 + 2.0 * (reduced - corrected_error)
             }
         }
-        // 2^1024 is not representable, so scale in two steps.
-        f64::MAX_EXP => (reduced - corrected_error + 1.0) * 2.0 * crate::constants::EXP_SCALE - 1.0,
         2..=56 => {
             let scale = normal_power_of_two(exponent);
             let inverse_scale = normal_power_of_two(-exponent);
@@ -120,6 +117,8 @@ const fn reconstruct_expm1(reduced: f64, corrected_error: f64, exponent: i32) ->
                 (reduced - (corrected_error + inverse_scale) + 1.0) * scale
             }
         }
+        // 2^1024 is not representable, so scale in two steps.
+        f64::MAX_EXP => (reduced - corrected_error + 1.0) * 2.0 * crate::constants::EXP_SCALE - 1.0,
         _ => (reduced - corrected_error + 1.0) * normal_power_of_two(exponent) - 1.0,
     }
 }
