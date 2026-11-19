@@ -136,6 +136,28 @@ mod tests {
     use super::{expm1, normal_power_of_two, reconstruct_expm1};
 
     #[test]
+    fn linear_approximation_cutoff() {
+        let cutoff = f64::EPSILON / 4.0;
+        let below = f64::from_bits(cutoff.to_bits() - 1);
+
+        assert_eq!(expm1(below), below);
+        assert_eq!(expm1(-below), -below);
+        assert_eq!(expm1(cutoff), cutoff);
+        assert_eq!(expm1(-cutoff), -cutoff);
+    }
+
+    #[test]
+    fn argument_reduction_cutoffs() {
+        // Adjacent inputs around the high-word cutoff near ln(2)/2.
+        assert_eq!(expm1(0.34657359123229975), 0.41421356371988893);
+        assert_eq!(expm1(0.3465735912322998), 0.41421356371988904);
+
+        // Adjacent inputs around the high-word cutoff near 3*ln(2)/2.
+        assert_eq!(expm1(-1.03972053527832), -0.6464465261231148);
+        assert_eq!(expm1(-1.0397205352783203), -0.6464465261231149);
+    }
+
+    #[test]
     fn normal_power_of_two_values() {
         assert_eq!(normal_power_of_two(-2), 0.25);
         assert_eq!(normal_power_of_two(-1), 0.5);
